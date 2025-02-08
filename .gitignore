@@ -1,7 +1,6 @@
 .ninja_*
 .cache
 
-.build
-
-CMakeLists.txt
-CMakeUserPresets.json
+maud
+maud.bat
+CMake*

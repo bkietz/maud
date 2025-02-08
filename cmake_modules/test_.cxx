@@ -163,7 +163,8 @@ export struct Expectation {
 
   operator bool() const { return failure.empty(); }
 
-  Expectation &&operator or(auto on_fail) && {
+  template <std::invocable<std::ostream &> C>
+  Expectation &&operator or(C on_fail) && {
     if (not failure.empty()) {
       std::stringstream ss{std::move(failure)};
       on_fail(ss);
@@ -197,7 +198,7 @@ std::string operator,(Condition<C> c, End e) {
                : e.condition_string.starts_with("!")    ? 1
                                                         : 0;
   s += e.condition_string.substr(negation);
-  if constexpr (not std::is_same_v<std::decay_t<decltype(c.condition)>, bool>) {
+  if constexpr (not std::is_same_v<C, bool>) {
     s += " (";
     s += testing::PrintToString(c.condition);
     s += ")";

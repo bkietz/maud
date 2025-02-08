@@ -917,6 +917,7 @@ function(_maud_setup)
     _maud_eval()
     "
   )
+  file(WRITE "${CMAKE_BINARY_DIR}/.gitignore" "*")
 
   file(MAKE_DIRECTORY "${MAUD_DIR}/junk" "${MAUD_DIR}/rendered")
   file(WRITE "${MAUD_DIR}/options.h" "")
