@@ -81,7 +81,6 @@ argument(
 )
 
 string(APPEND help_str "\n")
-argument(source_readonly OFF "Use symlinks to avoid writing in $source_dir")
 argument(generate_only OFF "Only generate a build directory")
 argument(CMakeLists_only OFF "Only generate CMakeLists.txt")
 
@@ -102,20 +101,6 @@ cmake_path(NORMAL_PATH source_dir)
 
 cmake_path(ABSOLUTE_PATH build_dir)
 cmake_path(NORMAL_PATH build_dir)
-
-if(source_readonly)
-  cmake_path(IS_PREFIX source_dir "${build_dir}" build_in_source_dir)
-  if(build_in_source_dir)
-    message(
-      FATAL_ERROR
-      "Using --source-readonly requires $build_dir outside $source_dir"
-    )
-  endif()
-  file(WRITE "${build_dir}/CMakeLists.txt" "")
-  file(CREATE_LINK "${source_dir}" "${build_dir}/source" SYMBOLIC)
-  set(source_dir "${build_dir}")
-  set(build_dir "${build_dir}/.build")
-endif()
 
 file(
   WRITE "${source_dir}/CMakeLists.txt"
