@@ -58,11 +58,11 @@ endfunction()
 
 function(json_list out_var)
   cmake_parse_arguments(
+    PARSE_ARGV 1
     "" # prefix
     "" # options
     "ERROR_VARIABLE;GET" # single value arguments
     "[]" # multi value arguments
-    ${ARGN}
   )
 
   string(JSON type ERROR_VARIABLE error TYPE "${_GET}" ${_UNPARSED_ARGUMENTS})
@@ -86,6 +86,7 @@ function(json_list out_var)
   math_assign(max_i - 1)
   foreach(i RANGE ${max_i})
     string(JSON element ERROR_VARIABLE error GET "${array}" ${i} ${element_path})
+    string(REPLACE ";" "\\;" element "${element}")
     list(APPEND list "${element}")
   endforeach()
 
@@ -843,19 +844,39 @@ endfunction()
 
 
 function(_maud_load_cache build_dir)
-  if(NOT build_dir STREQUAL "CONFIGURING")
-    # We haven't loaded CMakeCache.txt yet, so do that now.
-    # Unset vars which are just CWD in script mode.
-    unset(CMAKE_SOURCE_DIR PARENT_SCOPE)
-    unset(CMAKE_BINARY_DIR PARENT_SCOPE)
-    file(READ "${build_dir}/CMakeCache.txt" cache)
-    string(CONCAT pattern "^(.*\n)" [[([^#/].*):(.+)=]] "([^\n]*)" "\n(.*)$")
-    while(cache MATCHES "${pattern}")
-      set(cache "${CMAKE_MATCH_1}")
-      set(${CMAKE_MATCH_2} "${CMAKE_MATCH_4}" CACHE ${CMAKE_MATCH_3} "" FORCE)
-    endwhile()
-  endif()
+  # Script mode doesn't load CMakeCache.txt, so when cache is required
+  # load those variables from the cmake file api.
 
+  # Unset vars which are just CWD in script mode.
+  unset(CMAKE_SOURCE_DIR PARENT_SCOPE)
+  unset(CMAKE_BINARY_DIR PARENT_SCOPE)
+
+  file(GLOB index "${build_dir}/.cmake/api/v1/reply/index-*.json")
+  if(NOT index OR index MATCHES ";")
+    message(FATAL_ERROR "expected single index file, got '${index}")
+  endif()
+  file(READ "${index}" index)
+
+  string(JSON cache GET "${index}" reply cache-v2 jsonFile)
+  file(READ "${build_dir}/.cmake/api/v1/reply/${cache}" cache)
+  json_list(cache GET "${cache}" entries [])
+
+  foreach(entry ${cache}})
+    string(JSON name GET "${entry}" name)
+    string(JSON type GET "${entry}" type)
+    string(JSON value GET "${entry}" value)
+    set(${name} "${value}" CACHE ${type} "" FORCE)
+
+    json_list(names GET "${entry}" properties [] name)
+    json_list(values GET "${entry}" properties [] value)
+    foreach(n v IN ZIP_LISTS names values)
+      set_property(CACHE ${name} PROPERTY ${n} "${v}")
+    endforeach()
+  endforeach()
+endfunction()
+
+
+function(_maud_load_cache_updates)
   _maud_glob(updates "${MAUD_DIR}/cache_updates")
   foreach(var ${updates})
     file(READ "${MAUD_DIR}/cache_updates/${var}" val)
@@ -890,6 +911,7 @@ endfunction()
 
 
 function(_maud_setup)
+  cmake_file_api(QUERY API_VERSION 1 CACHE 2.0)
   _maud_set(CMAKE_SOURCE_DIR "${CMAKE_SOURCE_DIR}")
   _maud_set(CMAKE_BINARY_DIR "${CMAKE_BINARY_DIR}")
   _maud_set(PROJECT_NAME "${PROJECT_NAME}")
@@ -898,7 +920,7 @@ function(_maud_setup)
   _maud_set(_MAUD_INCLUDE "SHELL: $<IF:$<CXX_COMPILER_ID:MSVC>,/Fi,-include>")
   _maud_set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-  _maud_load_cache(CONFIGURING)
+  _maud_load_cache_updates()
   unset(_MAUD_ALL_OPTIONS CACHE)
   unset(_MAUD_ALL_OPTIONS_RESOLVED CACHE)
 
@@ -914,6 +936,7 @@ function(_maud_setup)
     "
     include(\"${_MAUD_SELF_DIR}/Maud.cmake\")
     _maud_load_cache(\"${CMAKE_BINARY_DIR}\")
+    _maud_load_cache_updates()
     _maud_eval()
     "
   )
