@@ -80,13 +80,13 @@ struct Registrar {
       name += "/" + PrintToString(i);
     }
     if (not type_name.empty()) {
-      type_param = type_name.c_str();
+      //type_param = type_name.c_str();
       name += "/" + type_name;
     }
     if constexpr (HAS_PARAMETER) {
       auto old_size = name.size();
       name += "/" + PrintToString(*parameter);
-      value_param = name.c_str() + old_size + 1;
+      //value_param = name.c_str() + old_size + 1;
     }
 
     struct Fixture : testing::Test {

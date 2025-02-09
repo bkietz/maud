@@ -3,7 +3,6 @@ NEXT
 
 - provide a hook for missing imports; then we can have others drop in
   "not only link but also do package management with $mine"
-- how should we recommend use of gtest_discover_tests? If you only have a few it's nice
 - write doc
   - getting_started.rst
   - doc c++17 project
@@ -46,6 +45,36 @@ break if you're not using the full module scan system.
 - globbing and configurable regen
 - loading the cache
 - .in2 templates
+
+
+TODO: provide more CLI functionality
+------------------------------------
+
+With an optional dependency as minimal as "`fzf` or `sk` on the PATH",
+a much nicer CLI can be built. For example this could provide a vast
+improvement over ctest's (even with gtest_discover_tests):
+
+```
+~/proj $ maud --test
+> projectenum
+  7/32 ───────────────────────────────────────────────────────────────────────────────────────────
+▌ project/27/validate enum option
+  project/8/unit testing main
+  project/7/internal unit testing
+  project/29/documentation
+  project/13/rendered in2 source
+  project/9/custom unit testing
+  project/19/internal decl faux parts
+```
+
+The same basic approach could be applied to building specific targets,
+running some fixer, ...
+
+All of this should still uphold the basic form of the `maud` tool:
+A build is a complex but unitary transformation, and running the tool
+should always complete that transformation. It just happens that by
+default we don't run the tests or install (but they logically belong
+to that same singular flow).
 
 
 TODO: only support overriding default globs with glob() calls
