@@ -2,6 +2,8 @@
 # program to be compiled and runnable *before* configuration ends.
 # This can be accomplished with try_compile:
 
+shim_script_as("${CMAKE_SOURCE_DIR}/maud" "${_MAUD_SELF_DIR}/maud_cli.cmake")
+
 set(
   _MAUD_INJECT_REGENERATE
   "${MAUD_DIR}/maud_inject_regenerate"

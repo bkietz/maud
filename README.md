@@ -64,7 +64,3 @@ $ cmake -P cmake_modules/maud_cli.cmake -- --log-level=VERBOSE
 # ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
 #   (the maud executable is just an alias for this anyway)
 ```
-
-(TODO link to rendered docs) To build the documentation, install the python dependencies
-in cmake_modules/sphinx_requirements.txt and Doxygen. When the dependencies are detected,
-rendering documentation will be added to the build step.

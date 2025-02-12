@@ -8,8 +8,10 @@ NEXT
   - doc c++17 project
   - we need an "introduction to C++20 modules" page too; there won't just be C++
     experts needing to build stuff
+  - validation of dependencies is left to c++; if the result is just an error
+    that sends the user back to the dependency provider then a `static_assert`
+    is just as good as whatever cmake might raise
 - more test projects
-  - just compile each test case to a cmake script
   - use a maud based project with fetchcontent
   - install documentation
   - render one in2 multiple times, one for each value from a list
@@ -125,29 +127,6 @@ I guess we just have to assume that if any configuration would
 import a dependency then it must be available for linking to any
 configuration. In the example above, the import will still be
 linked in release but not used.
-
-
-TODO: package maud_apidoc as a sphinx plugin
---------------------------------------------
-
-This would be a combination of the cli for extracting /// comments to json
-and the sphinx extension which adds the new directives. The sphinx extension
-should support regeneration of json on build, for use outside a build system.
-
-- why not doxygen/breathe
-  - cross linking is hard
-  - sphinx' markup is better (documented, powerful, extensible, beauty)
-  - breathe is not well maintained
-- why not clang-doc
-  - dependence on compile_commands.json is not robust (modules, pch, @opts)
-  - doesn't pick up macros or modules
-- why not hawkmoth
-  - doesn't support `///`
-  - more opinionated about attaching to declarations than I'd like-
-    I *know* apidoc will break sometime, somehow and I want to have
-    more opportunities to work around (so let some comments be orphaned)
-  - uses libclang directly in sphinx I prefer to have intermediate JSON
-    which exposes more targets to ninja and keeps the build incremental
 
 
 TODO: allow deferring past the cmake_modules stage
@@ -285,16 +264,7 @@ https://cmake.org/cmake/help/latest/prop_sf/COMPILE_OPTIONS.html
 https://cmake.org/cmake/help/latest/prop_sf/CXX_SCAN_FOR_MODULES.html
 ```
 
-Notes
------
-
-add_custom_target's OUTPUT file carries a dependency automatically
-
-validation of dependencies is left to c++; if the result is just an error
-that sends the user back to the dependency provider then a `static_assert`
-is just as good as whatever cmake might throw up
-
-What is `IMPORTED_CXX_MODULES_COMPILE_DEFINITIONS`? Is this a shortcut to
+Investigate `IMPORTED_CXX_MODULES_COMPILE_DEFINITIONS`. Is this a shortcut to
 the way I want to associate options?
 
 Notes: dep scan

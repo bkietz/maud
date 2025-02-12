@@ -17,7 +17,7 @@ foreach(i RANGE 4 ${CMAKE_ARGC})
     set(${arg_name} "${CMAKE_MATCH_2}")
   elseif(arg MATCHES "^-+([^-][^= ]*)$")
     string(REPLACE - _ arg_name ARG_${CMAKE_MATCH_1})
-    set(${arg_name} ON)
+    set(${arg_name} ${arg})
   else()
     message(FATAL_ERROR "Unrecognized argument ${CMAKE_ARGV${i}}")
   endif()
@@ -26,6 +26,8 @@ endforeach()
 function(argument name default help)
   if(NOT "${ARG_${name}}" STREQUAL "")
     set(value "${ARG_${name}}")
+  elseif(default STREQUAL "OFF")
+    set(value "")
   else()
     set(value "${default}")
   endif()
@@ -58,6 +60,8 @@ endif()
 string(APPEND help_str "\n")
 
 argument(quiet OFF "Make cmake and the build tool quiet")
+string(APPEND help_str "\n")
+
 argument(log_level STATUS "Log level for cmake")
 argument(generator "Ninja Multi-Config" "Build tool for generated build")
 argument(
@@ -81,8 +85,8 @@ argument(
 )
 
 string(APPEND help_str "\n")
+argument(fresh OFF "\tClear the cache and regenerate")
 argument(generate_only OFF "Only generate a build directory")
-argument(CMakeLists_only OFF "Only generate CMakeLists.txt")
 
 if(log_level STREQUAL "VERBOSE")
   message(STATUS "This is Larry's spirit guide, Maud. I am looking into the box...")
@@ -102,67 +106,64 @@ cmake_path(NORMAL_PATH source_dir)
 cmake_path(ABSOLUTE_PATH build_dir)
 cmake_path(NORMAL_PATH build_dir)
 
-file(
-  WRITE "${source_dir}/CMakeLists.txt"
-  "
-  ${cmake_minimum}
-  ${project_command}
+if(fresh OR NOT EXISTS "${source_dir}/CMakeLists.txt")
+  file(
+    WRITE "${source_dir}/CMakeLists.txt"
+    "
+    ${cmake_minimum}
+    ${project_command}
 
-  include(\"${maud_path}\")
+    include(\"${maud_path}\")
 
-  _maud_setup()
+    _maud_setup()
 
-  include(CTest)
+    include(CTest)
 
-  _maud_cmake_modules()
-  foreach(module \${_MAUD_CMAKE_MODULES})
-    cmake_path(GET module PARENT_PATH dir)
-    include(\"\${module}\")
-  endforeach()
+    _maud_cmake_modules()
+    foreach(module \${_MAUD_CMAKE_MODULES})
+      cmake_path(GET module PARENT_PATH dir)
+      include(\"\${module}\")
+    endforeach()
 
-  # if any module appended to the PATH, save that to the cache
-  _maud_set(CMAKE_MODULE_PATH \"\${CMAKE_MODULE_PATH}\")
+    # if any module appended to the PATH, save that to the cache
+    _maud_set(CMAKE_MODULE_PATH \"\${CMAKE_MODULE_PATH}\")
 
-  # resolve any remaining options
-  _maud_resolve_options()
+    # resolve any remaining options
+    _maud_resolve_options()
 
-  if(BUILD_TESTING AND NOT COMMAND \"maud_add_test\")
-    # TODO fallback to FetchContent
-    find_package(GTest)
-    include_directories(\${GTEST_INCLUDE_DIRS})
+    if(BUILD_TESTING AND NOT COMMAND \"maud_add_test\")
+      # TODO fallback to FetchContent
+      find_package(GTest)
+      include_directories(\${GTEST_INCLUDE_DIRS})
+    endif()
+
+    _maud_in2()
+    _maud_finalize_generated()
+    _maud_include_directories()
+
+    _maud_cxx_sources()
+    _maud_setup_clang_format()
+    _maud_finalize_targets()
+    _maud_setup_doc()
+    _maud_options_summary()
+    _maud_setup_regenerate()
+    "
+  )
+  execute_process(
+    COMMAND
+    "${CMAKE_COMMAND}"
+    -B "${build_dir}"
+    -S "${source_dir}"
+    -G "${generator}"
+    ${cmake_args}
+    --log-level=${log_level}
+    ${fresh}
+    RESULT_VARIABLE result
+  )
+
+  if(NOT result EQUAL 0)
+    message(FATAL_ERROR "Generation failed.")
   endif()
-
-  _maud_in2()
-  _maud_finalize_generated()
-  _maud_include_directories()
-
-  _maud_cxx_sources()
-  _maud_setup_clang_format()
-  _maud_finalize_targets()
-  _maud_setup_doc()
-  _maud_options_summary()
-  _maud_setup_regenerate()
-  "
-)
-
-if(CMakeLists_only)
-  return()
-endif()
-
-execute_process(
-  COMMAND
-  "${CMAKE_COMMAND}"
-  -B "${build_dir}"
-  -S "${source_dir}"
-  -G "${generator}"
-  ${cmake_args}
-  --log-level=${log_level}
-  --fresh
-  RESULT_VARIABLE result
-)
-
-if(NOT result EQUAL 0)
-  message(FATAL_ERROR "Generation failed.")
 endif()
 
 if(generate_only)
@@ -176,16 +177,12 @@ while(NOT (verify MATCHES "INJECTED BY MAUD"))
   endif()
 endwhile()
 
-if(quiet AND generator MATCHES "Ninja")
-  set(quiet_arg --quiet)
-endif()
-
 execute_process(
   COMMAND
   "${CMAKE_COMMAND}"
   --build "${build_dir}"
   --
-  ${quiet_arg}
+  ${quiet}
   RESULT_VARIABLE result
 )
 

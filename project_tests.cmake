@@ -1121,7 +1121,9 @@ function(run_test)
 
   # clear test directory
   file(GLOB entries *)
-  file(REMOVE_RECURSE ${entries})
+  if(entries)
+    file(REMOVE_RECURSE ${entries})
+  endif()
 
   # install maud to .usr
   run(COMMAND cmake --install "${CMAKE_BINARY_DIR}" --config Debug --prefix .usr)

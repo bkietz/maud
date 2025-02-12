@@ -1355,6 +1355,10 @@ function(shim_script_as destination script)
     "${shebang}\n"
     "\"${CMAKE_COMMAND}\" -P \"${script}\" -- \"\$@\"\n"
   )
+  file(
+    CHMOD "${destination}"
+    FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+  )
 endfunction()
 
 
