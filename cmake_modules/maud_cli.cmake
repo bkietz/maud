@@ -55,7 +55,7 @@ Maud CLI - generate with cmake then build
 )
 argument(help OFF "-h\tShow help text")
 if(ARG_h)
-  set(help ON)
+  set(help --help)
 endif()
 string(APPEND help_str "\n")
 
@@ -106,7 +106,15 @@ cmake_path(NORMAL_PATH source_dir)
 cmake_path(ABSOLUTE_PATH build_dir)
 cmake_path(NORMAL_PATH build_dir)
 
-if(fresh OR NOT EXISTS "${source_dir}/CMakeLists.txt")
+if(
+  fresh
+  OR
+  cmake_args
+  OR
+  NOT EXISTS "${build_dir}"
+  OR
+  NOT EXISTS "${source_dir}/CMakeLists.txt"
+)
   file(
     WRITE "${source_dir}/CMakeLists.txt"
     "

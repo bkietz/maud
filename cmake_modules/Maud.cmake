@@ -905,6 +905,7 @@ function(_maud_load_cache build_dir)
   # load those variables from the cmake file api.
 
   # Unset vars which are just CWD in script mode.
+  _maud_set(MAUD_WORKING_DIR "${CMAKE_SOURCE_DIR}")
   unset(CMAKE_SOURCE_DIR PARENT_SCOPE)
   unset(CMAKE_BINARY_DIR PARENT_SCOPE)
 

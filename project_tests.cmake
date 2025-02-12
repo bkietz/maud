@@ -18,7 +18,7 @@ macro("project test: hello world")
 
   run(COMMAND maud --log-level=VERBOSE)
 
-  run(COMMAND "${TEST_DIR}/.build/Debug/hello")
+  run(COMMAND .build/Debug/hello)
   assert([[OUT STREQUAL "hello world!\n"]])
 endmacro()
 
@@ -59,7 +59,7 @@ macro("project test: auto add sources")
   run(COMMAND maud --log-level=VERBOSE)
 
   library_name(STATIC foo libfoo)
-  assert([[EXISTS "${TEST_DIR}/.build/Debug/${libfoo}"]])
+  assert([[EXISTS ".build/Debug/${libfoo}"]])
 
   write(
     bar.cxx
@@ -71,7 +71,7 @@ macro("project test: auto add sources")
 
   run(COMMAND cmake --build .build --config Debug)
   library_name(STATIC bar libbar)
-  assert([[EXISTS "${TEST_DIR}/.build/Debug/${libbar}"]])
+  assert([[EXISTS ".build/Debug/${libbar}"]])
 
   write(
     bar.cxx
@@ -83,7 +83,7 @@ macro("project test: auto add sources")
 
   run(COMMAND cmake --build .build --config Debug)
   library_name(STATIC bar2 libbar2)
-  assert([[EXISTS "${TEST_DIR}/.build/Debug/${libbar2}"]])
+  assert([[EXISTS ".build/Debug/${libbar2}"]])
 endmacro()
 
 
@@ -539,7 +539,7 @@ macro("project test: util_ is not installed")
   file(GLOB installed_util .usr/lib/*util_.*)
   assert([[NOT installed_util]])
 
-  run(COMMAND "${TEST_DIR}/.usr/bin/noop")
+  run(COMMAND noop)
 endmacro()
 
 
@@ -576,8 +576,8 @@ macro("project test: rendered in2 source")
 
   library_name(STATIC foo libfoo)
   library_name(STATIC bar libbar)
-  assert([[EXISTS "${TEST_DIR}/.build/Debug/${libfoo}"]])
-  assert([[EXISTS "${TEST_DIR}/.build/Debug/${libbar}"]])
+  assert([[EXISTS ".build/Debug/${libfoo}"]])
+  assert([[EXISTS ".build/Debug/${libbar}"]])
 endmacro()
 
 
@@ -904,17 +904,19 @@ macro("project test: path option")
       static_assert(P == std::string_view{__FILE__});
     ]]
   )
-  run(COMMAND maud -DP=./assertions.cxx)
+  run(COMMAND maud --log-level=VERBOSE -DP=./assertions.cxx)
 endmacro()
 
 
-macro("project test: validate bool and enum and string options")
+macro("project test: validate options")
   write(
     options.cmake
     [[
       option(B "")
     ]]
   )
+  # BOOL options must be ON or OFF
+  run(COMMAND maud -DB=ON)
   run(FAILING COMMAND maud -DB=NEITHER_ON_NOR_OFF)
 
   write(
@@ -926,8 +928,9 @@ macro("project test: validate bool and enum and string options")
       )
     ]]
   )
+  # ENUM options must be one of their allowed values
   run(COMMAND maud -DE=A)
-  run(FAILING COMMAND maud -DE=999)
+  run(FAILING COMMAND maud -DE=-999)
 
   write(
     options.cmake
@@ -943,6 +946,9 @@ macro("project test: validate bool and enum and string options")
       )
     ]=]
   )
+  # an explicit VALIDATE CODE block can enforce
+  # arbitrary conditions
+  run(COMMAND maud  -DNONZERO=10)
   run(FAILING COMMAND maud  -DNONZERO=0)
 endmacro()
 
@@ -1088,25 +1094,36 @@ function(run)
     ERROR_VARIABLE OUT
     RESULT_VARIABLE error_code
   )
+  set(OUT "${OUT}" PARENT_SCOPE)
 
   string(JOIN " " command ${failing} ${ARGN})
+
+  set(begin "-------------------------------------")
+  mark_non_empty_last_line(OUT)
+  if(failing)
+    set(end "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+  else()
+    set(end ".....................................")
+  endif()
+
   message(
     "${command}\n"
-    "------------------------------------[${error_code}]-\n"
+    "${begin}[${error_code}]\n"
     "${OUT}"
-    "........................................\n"
+    "${end}[${error_code}]\n"
   )
   if(NOT failing)
     assert([[NOT error_code]])
   else()
     assert([[error_code]])
   endif()
-  set(OUT "${OUT}" PARENT_SCOPE)
 endfunction()
 
 
 function(write path content)
+  # TODO dedent
   file(WRITE "${path}" "${content}")
+  mark_non_empty_last_line(content)
   message(
     "WRITE ${path}\n"
     "----------------------------------------\n"
@@ -1116,8 +1133,27 @@ function(write path content)
 endfunction()
 
 
+function(mark_non_empty_last_line var)
+  if(NOT var MATCHES "\n$")
+    set(var "${var}❌\n" PARENT_SCOPE)
+  endif()
+endfunction()
+
+
 function(run_test)
-  message("\nproject testing in ${TEST_DIR}\n")
+  cmake_path(GET MAUD_WORKING_DIR PARENT_PATH test_root)
+
+  if(NOT test_root STREQUAL "${MAUD_DIR}/project_test")
+    message(FATAL_ERROR "
+      Aborting project test; expected a subdirectory of
+        ${MAUD_DIR}/project_test
+      but working directory is
+        ${MAUD_WORKING_DIR}
+    ")
+  endif()
+
+  message("\nproject testing in ${MAUD_WORKING_DIR}\n")
+  cmake_path(GET MAUD_WORKING_DIR FILENAME TEST_NAME)
 
   # clear test directory
   file(GLOB entries *)
@@ -1129,9 +1165,9 @@ function(run_test)
   run(COMMAND cmake --install "${CMAKE_BINARY_DIR}" --config Debug --prefix .usr)
 
   # set env
-  prepend_to_path_list(Path "${TEST_DIR}/.usr/bin")
-  prepend_to_path_list(PATH "${TEST_DIR}/.usr/bin")
-  prepend_to_path_list(CMAKE_PREFIX_PATH "${TEST_DIR}/.usr/lib/cmake")
+  prepend_to_path_list(Path .usr/bin)
+  prepend_to_path_list(PATH .usr/bin)
+  prepend_to_path_list(CMAKE_PREFIX_PATH .usr/lib/cmake)
   set(ENV{CXX} "${CMAKE_CXX_COMPILER}")
   # TODO use the same generator
 
@@ -1141,8 +1177,13 @@ endfunction()
 
 function(prepend_to_path_list list_var path)
   cmake_path(CONVERT "$ENV{${list_var}}" TO_CMAKE_PATH_LIST list NORMALIZE)
+
+  cmake_path(ABSOLUTE_PATH path)
+  cmake_path(NATIVE_PATH path NORMALIZE path)
   list(PREPEND list "${path}")
+
   cmake_path(CONVERT "${list}" TO_NATIVE_PATH_LIST list NORMALIZE)
+
   set(ENV{${list_var}} "${list}")
 endfunction()
 
@@ -1157,10 +1198,10 @@ function(setup_tests)
   get_directory_property(names MACROS)
   list(FILTER names INCLUDE REGEX "^project test: (.+)$")
   list(TRANSFORM names REPLACE "^project test: (.+)$" "\\1")
+  file(REMOVE_RECURSE "${MAUD_DIR}/project_test")
   foreach(name ${names})
     # create test directory
     set(test_dir "${MAUD_DIR}/project_test/${name}")
-    file(REMOVE_RECURSE "${test_dir}")
     file(MAKE_DIRECTORY "${test_dir}")
 
     # The test is just this same cmake file in script mode.
@@ -1172,8 +1213,6 @@ function(setup_tests)
       NAME "project_test.${name}"
       COMMAND
         "${CMAKE_COMMAND}"
-        -D "TEST_NAME=${name}"
-        -D "TEST_DIR=${test_dir}"
         -D "MAUD_CODE=${test_code}"
         -P "${MAUD_DIR}/eval.cmake"
       WORKING_DIRECTORY "${test_dir}"
@@ -1181,7 +1220,7 @@ function(setup_tests)
   endforeach()
 endfunction()
 
-if(DEFINED TEST_NAME)
+if(DEFINED MAUD_WORKING_DIR)
   run_test()
 else()
   setup_tests()

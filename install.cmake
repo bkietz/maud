@@ -21,6 +21,7 @@ install(
 install(
   DIRECTORY
   "${dir}/cmake_modules/trike"
+  # FIXME don't install __pycache__
   DESTINATION
   "${CMAKE_INSTALL_LIBDIR}/cmake/Maud"
 )
