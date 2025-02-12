@@ -15,7 +15,7 @@ if(
   "${dir}/cmake_modules/executable.cxx" IS_NEWER_THAN "${_MAUD_INJECT_REGENERATE}"
 )
   file(
-    WRITE "${MAUD_DIR}/maud_.cxx"
+    WRITE "${MAUD_DIR}/injected/maud_minimal_.cxx"
     "export module maud_;\nexport import :filesystem;\n"
   )
 
@@ -26,7 +26,7 @@ if(
     SOURCES "${dir}/maud_inject_regenerate.cxx"
     SOURCES_TYPE CXX_MODULE
     SOURCES
-      "${MAUD_DIR}/maud_.cxx"
+      "${MAUD_DIR}/injected/maud_minimal_.cxx"
       "${dir}/filesystem.cxx"
       "${dir}/cmake_modules/executable.cxx"
     COPY_FILE "${_MAUD_INJECT_REGENERATE}"

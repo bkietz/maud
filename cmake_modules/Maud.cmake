@@ -56,19 +56,24 @@ function(_maud_filter list)
 endfunction()
 
 
-function(json_list out_var)
+function(json_list out_var json)
   cmake_parse_arguments(
-    PARSE_ARGV 1
+    PARSE_ARGV 2
     "" # prefix
     "" # options
-    "ERROR_VARIABLE;GET" # single value arguments
+    "ERROR_VARIABLE" # single value arguments
     "[]" # multi value arguments
   )
 
-  string(JSON type ERROR_VARIABLE error TYPE "${_GET}" ${_UNPARSED_ARGUMENTS})
-  if(type AND NOT type STREQUAL "ARRAY")
-    set(error "Selector ${_UNPARSED_ARGUMENTS} selected ${type} instead of ARRAY")
+  string(
+    JSON doc ERROR_VARIABLE error
+    GET "${json}" ${_UNPARSED_ARGUMENTS}
+  )
+  if(NOT error)
+    string(JSON max_i ERROR_VARIABLE error LENGTH "${doc}")
+    math_assign(max_i - 1)
   endif()
+
   if(error AND NOT _ERROR_VARIABLE)
     message(FATAL_ERROR "${error}")
   elseif(error)
@@ -76,21 +81,70 @@ function(json_list out_var)
     set(${out_var} NOTFOUND PARENT_SCOPE)
     return()
   endif()
-  string(JSON array GET "${_GET}" ${_UNPARSED_ARGUMENTS})
 
   set(element_path "_[]")
   set(element_path "${${element_path}}")
   set(list)
+  string(JSON type TYPE "${doc}")
 
-  string(JSON max_i LENGTH "${array}")
-  math_assign(max_i - 1)
   foreach(i RANGE ${max_i})
-    string(JSON element ERROR_VARIABLE error GET "${array}" ${i} ${element_path})
+    if(type STREQUAL "ARRAY")
+      string(JSON element ERROR_VARIABLE error GET "${doc}" ${i} ${element_path})
+    else()
+      string(JSON key MEMBER "${doc}" ${i})
+      string(
+        JSON value ERROR_VARIABLE error
+        GET "${doc}" "${key}" ${element_path}
+      )
+      set(element "${key}=${value}")
+    endif()
     string(REPLACE ";" "\\;" element "${element}")
     list(APPEND list "${element}")
   endforeach()
 
   set(${out_var} "${list}" PARENT_SCOPE)
+endfunction()
+
+
+function(json_destructure out_var_prefix json)
+  cmake_parse_arguments(
+    PARSE_ARGV 2
+    "" # prefix
+    "" # options
+    "ERROR_VARIABLE" # single value arguments
+    "" # multi value arguments
+  )
+
+  string(
+    JSON doc ERROR_VARIABLE error
+    GET "${json}" ${_UNPARSED_ARGUMENTS}
+  )
+  if(NOT error)
+    string(JSON max_i ERROR_VARIABLE error LENGTH "${doc}")
+    math_assign(max_i - 1)
+  endif()
+
+  if(error AND NOT _ERROR_VARIABLE)
+    message(FATAL_ERROR "${error}")
+  elseif(error)
+    set(${_ERROR_VARIABLE} "${error}" PARENT_SCOPE)
+    set(${out_var} NOTFOUND PARENT_SCOPE)
+    return()
+  endif()
+
+  string(JSON type TYPE "${doc}")
+  if(type STREQUAL "ARRAY")
+    foreach(i RANGE ${max_i})
+      string(JSON element GET "${doc}" ${i})
+      set("${out_var_prefix}${i}" "${element}" PARENT_SCOPE)
+    endforeach()
+  else()
+    foreach(i RANGE ${max_i})
+      string(JSON key MEMBER "${doc}" ${i})
+      string(JSON value GET "${doc}" "${key}")
+      set("${out_var_prefix}${key}" "${value}" PARENT_SCOPE)
+    endforeach()
+  endif()
 endfunction()
 
 
@@ -284,7 +338,7 @@ function(_maud_setup_clang_format)
   if(config MATCHES "# Maud: ([{]([^\n]|\n *#)+[}])")
     string(REGEX REPLACE " *\n *# *" " " json "${CMAKE_MATCH_1}")
     string(JSON version GET "${json}" version)
-    json_list(patterns GET "${json}" patterns)
+    json_list(patterns "${json}" patterns)
   else()
     message(
       VERBOSE
@@ -363,7 +417,7 @@ function(_maud_scan source_file)
   file(READ "${ddi}" ddi)
 
   # collect all imports
-  json_list(imports ERROR_VARIABLE error GET "${ddi}" rules 0 requires [] logical-name)
+  json_list(imports "${ddi}" ERROR_VARIABLE error rules 0 requires [] logical-name)
   if(NOT imports)
     set(imports)
   endif()
@@ -548,7 +602,7 @@ function(_maud_add_test source_file out_target_name)
   set_target_properties(
     test_.${name}
     PROPERTIES
-    COMPILE_OPTIONS "${_MAUD_INCLUDE} ${_MAUD_SELF_DIR}/test_.hxx"
+    COMPILE_OPTIONS "${_MAUD_INCLUDE} \"${_MAUD_SELF_DIR}/test_.hxx\""
   )
 endfunction()
 
@@ -713,6 +767,9 @@ function(_maud_finalize_targets)
       # TODO support injecting more cmake into maud-config.cmake
     )
   endforeach()
+
+  get_directory_property(tests TESTS)
+  _maud_set(_MAUD_TESTS "${tests}")
 endfunction()
 
 
@@ -859,7 +916,7 @@ function(_maud_load_cache build_dir)
 
   string(JSON cache GET "${index}" reply cache-v2 jsonFile)
   file(READ "${build_dir}/.cmake/api/v1/reply/${cache}" cache)
-  json_list(cache GET "${cache}" entries [])
+  json_list(cache "${cache}" entries [])
 
   foreach(entry ${cache}})
     string(JSON name GET "${entry}" name)
@@ -867,8 +924,8 @@ function(_maud_load_cache build_dir)
     string(JSON value GET "${entry}" value)
     set(${name} "${value}" CACHE ${type} "" FORCE)
 
-    json_list(names GET "${entry}" properties [] name)
-    json_list(values GET "${entry}" properties [] value)
+    json_list(names "${entry}" properties [] name)
+    json_list(values "${entry}" properties [] value)
     foreach(n v IN ZIP_LISTS names values)
       set_property(CACHE ${name} PROPERTY ${n} "${v}")
     endforeach()
@@ -964,7 +1021,7 @@ function(_maud_setup)
   )
 
   # Assemble the minimal list of FILE_SET BASE_DIRS
-  set(base_dirs "${CMAKE_SOURCE_DIR};${MAUD_DIR}/rendered;${_MAUD_SELF_DIR}")
+  set(base_dirs "${CMAKE_SOURCE_DIR};${MAUD_DIR};${_MAUD_SELF_DIR}")
   foreach(base_dir ${base_dirs})
     foreach(other_dir ${base_dirs})
       if(base_dir STREQUAL other_dir)
@@ -1834,7 +1891,7 @@ function(in2_pipeline_filter_string)
   if(ARGV0 STREQUAL "JSON")
     list(POP_FRONT ARGN _ _)
     if(ARGV1 STREQUAL "LIST")
-      json_list(IT GET "${IT}" ${ARGN})
+      json_list(IT "${IT}" ${ARGN})
     else()
       string(JSON IT ${ARGV1} "${IT}" ${ARGN})
     endif()
