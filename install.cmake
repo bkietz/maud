@@ -41,9 +41,3 @@ install(
   DESTINATION "${CMAKE_INSTALL_BINDIR}"
   OPTIONAL
 )
-
-# Exclude Maud's own "system" c++ when bootstrapping
-set(
-  MAUD_CXX_SOURCE_EXCLUSION_PATTERN
-  "cmake_modules/"
-)

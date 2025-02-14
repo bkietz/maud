@@ -26,13 +26,20 @@ NEXT
       @
     endforeach()
     ```
-- strip common base dirs from docs; somebody won't be able to resist stuffing all the
-  .rsts into a docs/ subdirectory and then docs/ should be considered the root of
-  the documentation
+- improve docs
+  - make zero conf docs actually work
+  - generate a default full depth toctree and all-target glossary page
+  - sphinx should stage its own rsts; conf runs before sphinx reads index.rst
+  - strip common base dirs from docs; somebody won't be able to resist stuffing all the
+    .rsts into a docs/ subdirectory and then docs/ should be considered the root of
+    the documentation
+  - compile html documentation to a docset
 - harden and test the scanner
   - support this when preprocessing isn't required
 - git ls-files starts up *quick*, so we could use it even for small projects,
   let `_maud_glob` use that
+- Overload operators `and or not` for use with matchers, and provide ""_r
+  to make a regex matcher
 
 
 TODO: break Maud.cmake up into distinct modules
@@ -51,6 +58,10 @@ break if you're not using the full module scan system.
 
 TODO: provide more CLI functionality
 ------------------------------------
+
+With `compile_commands.json` copied to source root, we can
+infer the most recent build dir and from that probably the
+default config.
 
 With an optional dependency as minimal as "`fzf` or `sk` on the PATH",
 a much nicer CLI can be built. For example this could provide a vast

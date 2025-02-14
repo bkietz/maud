@@ -1,3 +1,9 @@
+# Exclude Maud's own "system" c++ when bootstrapping
+set(
+  MAUD_CXX_SOURCE_EXCLUSION_PATTERN
+  "cmake_modules/"
+)
+
 # When building Muad itself, we need the maud_inject_regenerate
 # program to be compiled and runnable *before* configuration ends.
 # This can be accomplished with try_compile:

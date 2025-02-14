@@ -892,19 +892,29 @@ macro("project test: path option")
         Some path option
         Some more description
         "
-        ADD_COMPILE_DEFINITIONS
       )
+      option(Q FILEPATH "")
     ]]
   )
-  write(
-    assertions.cxx
-    [[
-      #include <string_view>
-      import executable; int main() {}
-      static_assert(P == std::string_view{__FILE__});
-    ]]
+  write(foo/bar/baz/quux "")
+  run(
+    COMMAND
+      maud
+      --log-level=VERBOSE
+      --source-dir=../../..
+      -DP=../../..
+      -DQ=quux
+    WORKING_DIRECTORY foo/bar/baz
   )
-  run(COMMAND maud --log-level=VERBOSE -DP=./assertions.cxx)
+  cmake_path(NATIVE_PATH MAUD_WORKING_DIR expected_P)
+
+  set(expected_Q "${MAUD_WORKING_DIR}/foo/bar/baz/quux")
+  cmake_path(NATIVE_PATH expected_Q expected_Q)
+
+  # Path options are always relative to the working directory of the cmake
+  # process so that `-DFOO=./foo<TAB>` won't break even if we're not in the source root
+  assert("OUT MATCHES [[ P = ${expected_P} ]]")
+  assert("OUT MATCHES [[ Q = ${expected_Q} ]]")
 endmacro()
 
 
@@ -1141,19 +1151,19 @@ endfunction()
 
 
 function(run_test)
-  cmake_path(GET MAUD_WORKING_DIR PARENT_PATH test_root)
-
-  if(NOT test_root STREQUAL "${MAUD_DIR}/project_test")
-    message(FATAL_ERROR "
-      Aborting project test; expected a subdirectory of
-        ${MAUD_DIR}/project_test
+  if(NOT MAUD_WORKING_DIR STREQUAL "${MAUD_DIR}/project_test/${TEST_NAME}")
+    message(
+      FATAL_ERROR
+      "
+      Aborting project test; expected
+        ${MAUD_DIR}/project_test/${TEST_NAME}
       but working directory is
         ${MAUD_WORKING_DIR}
-    ")
+      "
+    )
   endif()
 
   message("\nproject testing in ${MAUD_WORKING_DIR}\n")
-  cmake_path(GET MAUD_WORKING_DIR FILENAME TEST_NAME)
 
   # clear test directory
   file(GLOB entries *)
@@ -1213,6 +1223,7 @@ function(setup_tests)
       NAME "project_test.${name}"
       COMMAND
         "${CMAKE_COMMAND}"
+        -D "TEST_NAME=${name}"
         -D "MAUD_CODE=${test_code}"
         -P "${MAUD_DIR}/eval.cmake"
       WORKING_DIRECTORY "${test_dir}"
@@ -1220,7 +1231,7 @@ function(setup_tests)
   endforeach()
 endfunction()
 
-if(DEFINED MAUD_WORKING_DIR)
+if(DEFINED TEST_NAME)
   run_test()
 else()
   setup_tests()
