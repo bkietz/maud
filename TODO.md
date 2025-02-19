@@ -38,8 +38,7 @@ NEXT
   - support this when preprocessing isn't required
 - git ls-files starts up *quick*, so we could use it even for small projects,
   let `_maud_glob` use that
-- Overload operators `and or not` for use with matchers, and provide ""_r
-  to make a regex matcher
+- glob `.configure_preset.json` and build `CMakePresets.json`
 
 
 TODO: break Maud.cmake up into distinct modules

@@ -5,7 +5,6 @@ module;
 #include <gtest/gtest.h>
 
 #include <any>
-#include <coroutine>
 #include <cstdint>
 #include <exception>
 #include <sstream>
@@ -161,6 +160,10 @@ export struct Expectation {
   int line;
   std::string failure;
 
+  [[maybe_unused]] static Expectation &&maybe_unused(Expectation &&e) {
+    return std::move(e);
+  }
+
   operator bool() const { return failure.empty(); }
 
   template <std::invocable<std::ostream &> C>
@@ -180,6 +183,98 @@ export struct Expectation {
   }
 };
 
+auto split_condition_string(std::string_view condition_string, std::string_view op) {
+  struct Pair {
+    std::string_view lhs, rhs;
+  };
+  auto lhs = condition_string.substr(0, condition_string.find(op));
+  auto rhs = condition_string.substr(lhs.size() + op.size());
+  if (rhs.find(op) == rhs.npos) {
+    lhs = lhs.substr(0, lhs.find_last_of(' '));
+    rhs = rhs.substr(rhs.find_first_not_of(' '));
+    return Pair{lhs, rhs};
+  }
+  // If there is more than one instance of op in the condition string,
+  // it's ambiguous where the LHS and RHS lie. We'd have to parse
+  // condition_string as a C++ expression, which is way too much
+  // work for such edge cases as `EXPECT_(x_eq_y == (x == y)`
+  //
+  // We make a last-ditch effort to split correctly by excluding copies
+  // of op which lie in a string literal or parenthesis.
+  std::string open_chars = R"([{("')}])";
+  open_chars.append({op[0]});
+  char const *candidate = nullptr;
+  auto c = condition_string;
+  int depth = 0;
+
+  for (size_t i = c.find_first_of(open_chars); i != c.npos;
+       i = c.find_first_of(open_chars)) {
+    c = c.substr(i);
+    switch (c[0]) {
+      case '\'':
+      case '"':
+        if (c.data()[-1] == 'R') {
+          auto end_tag = ")" + std::string{c.substr(1, c.find_first_of('('))} + "\"";
+          c = c.substr(c.find(end_tag) + end_tag.size());
+        } else {
+          char end = c[0];
+          c = c.substr(1);
+          for (;;) {
+            c = c.substr(c.find_first_of(std::string{end, '\\'}));
+            if (c[0] == end) break;
+            c = c.substr(2);
+          }
+          c = c.substr(1);
+        }
+        continue;
+
+      case '(':
+      case '{':
+      case '[':
+        c = c.substr(1);
+        ++depth;
+        continue;
+
+      case ']':
+      case '}':
+      case ')':
+        c = c.substr(1);
+        --depth;
+        continue;
+
+      default:  // op[0]
+        if (depth > 0 or not c.starts_with(op)) {
+          c = c.substr(c.find_first_not_of("<=>"));
+          continue;
+        }
+        c = c.substr(op.size());
+
+        if (c[0] == '<' or c[0] == '=' or c[0] == '>') {
+          c = c.substr(1);
+          continue;
+        }
+
+        if (not candidate) {
+          // Store the candidate and continue searching
+          candidate = c.data() - op.size();
+          continue;
+        }
+
+        // This is the *second* candidate we've found so far,
+        // we won't be able to decide between them; just bail.
+        return Pair{};
+    }
+  }
+  // candidate points to the start of the single significant
+  // instance of op in condition_string
+  lhs = condition_string.substr(0, candidate - condition_string.data());
+  rhs = condition_string.substr(lhs.size() + op.size());
+
+  lhs = lhs.substr(0, lhs.find_last_of(' '));
+  rhs = rhs.substr(rhs.find_first_not_of(' '));
+  return Pair{lhs, rhs};
+}
+
 export template <typename C>
 struct Condition {
   C const &condition;
@@ -193,18 +288,32 @@ std::string operator,(Condition<C> c, End e) {
   if (c.condition) return {};
 
   std::string s;
-  s += "Expected: ";
-  int negation = e.condition_string.starts_with("not ") ? 4
-               : e.condition_string.starts_with("!")    ? 1
-                                                        : 0;
-  s += e.condition_string.substr(negation);
-  if constexpr (not std::is_same_v<C, bool>) {
-    s += " (";
-    s += testing::PrintToString(c.condition);
-    s += ")";
+  auto cs = e.condition_string;
+  bool negated = false;
+  if (cs.starts_with("!")) {
+    cs = cs.substr(1);
+    negated = true;
+  } else if (cs.starts_with("not ")) {
+    cs = cs.substr(4);
+    negated = true;
+  } else if (cs.starts_with("not")) {
+    bool is_ident = cs[3] >= 'a' and cs[3] <= 'z' or cs[3] >= 'A' and cs[3] <= 'Z'
+                 or cs[3] >= '0' and cs[3] <= '9' or cs[3] == '_';
+    if (not is_ident) {
+      cs = cs.substr(3);
+      negated = true;
+    }
   }
-  s += "\n    to be ";
-  s += (negation ? "false" : "true");
+  s += "Expected ";
+  s += (negated ? "falsy: " : "truthy: ");
+  s += cs;
+  if constexpr (not std::is_same_v<C, bool>) {
+    if (not negated) {
+      s += "\n(it was ";
+      s += testing::PrintToString(c.condition);
+      s += ")";
+    }
+  }
   return s;
 }
 
@@ -243,46 +352,63 @@ export template <typename L, typename R>
 std::string operator,(Comparison<L, R> c, End e) {
   if (c.condition) return {};
 
-  auto lhs = testing::PrintToString(c.lhs);
-  auto i = e.condition_string.find(c.name);
-  //__________
-  // www == www
-  // w == w
-  //
-  // www == www
-  //..w == w
-  //__________
-  // w == w
-  // www == www
-  //
-  //..w == w
-  // www == www
-  //__________
-  // wwwwwwwwww
-  // w == w
-  // wwwww == w
-  //
-  // wwwwwwwwww
-  // w ....== w
-  // wwwww == w
-  int offset = 0;
-  if (i != std::string_view::npos) {
-    offset = int(i) - lhs.size() - 1;
-  }
   std::string s;
-  s += "Expected: ";
-  if (offset < 0) {
-    s += std::string(-offset, ' ');
+
+  auto [lhs_expected, rhs_expected] = split_condition_string(e.condition_string, c.name);
+  auto lhs_actual = testing::PrintToString(c.lhs);
+  auto rhs_actual = testing::PrintToString(c.rhs);
+  // TODO add a diff if both {lhs,rhs}_actual are multiline
+
+  if (lhs_expected.empty()) {
+    // Can't split the condition_string into LHS,RHS so
+    // fall back to no indentation.
+    s = "Expected: " + std::string{e.condition_string} + "\n";
+    s += "  Actual:"
+       + (lhs_actual.size() + rhs_actual.size() < 80
+              ? " " + lhs_actual + " vs " + rhs_actual
+              : "\n" + lhs_actual + "\n    vs\n" + rhs_actual);
+    return s;
   }
-  s += e.condition_string;
-  s += "\n";
-  s += "  Actual: ";
-  if (offset > 0) {
-    s += std::string(offset, ' ');
+
+  auto op = " " + std::string{c.name} + " ";
+
+  auto lhs_size = std::max(lhs_expected.size(), lhs_actual.size());
+  auto rhs_size = std::max(rhs_expected.size(), rhs_actual.size());
+  if (lhs_size + rhs_size < 80) {
+    std::string offset_actual(lhs_size - lhs_actual.size(), ' ');
+    std::string offset_expected(lhs_size - lhs_expected.size(), ' ');
+    s += "Expected: " + offset_expected;
+    s += lhs_expected;
+    s += op;
+    s += rhs_expected;
+    s += "\n";
+    s += "  Actual: " + offset_actual;
+    s += lhs_actual + " vs " + rhs_actual;
+    return s;
   }
-  s += testing::PrintToString(c.lhs);
-  s += " vs ";
-  s += testing::PrintToString(c.rhs);
+
+  if (lhs_actual.size() + rhs_size < 80) {
+    s += "Expected: ";
+    s += lhs_expected;
+    s += "\n";
+    s.append(sizeof("  Actual:") + lhs_actual.size(), ' ');
+    s += op;
+    s += rhs_expected;
+    s += "\n";
+    s += "  Actual: ";
+    s += lhs_actual + " vs " + rhs_actual;
+    return s;
+  }
+
+  s += "Expected:"
+     + (lhs_expected.size() + rhs_expected.size() < 80
+            ? " " + std::string{lhs_expected} + op + std::string{rhs_expected} + "\n"
+            : "\n" + std::string{lhs_expected} + "\n   " + op + "\n"
+                  + std::string{rhs_expected} + "\n\n");
+  s += "  Actual:"
+     + (lhs_actual.size() + rhs_actual.size() < 80
+            ? " " + lhs_actual + " vs " + rhs_actual
+            : "\n" + lhs_actual + "\n    vs\n" + rhs_actual);
   return s;
 }
 
@@ -298,16 +424,14 @@ MatchCondition<C> operator>>=(Condition<C> c, M matcher) {
 export template <typename C>
 std::string operator,(MatchCondition<C> c, End e) {
   auto &[condition, matcher] = c;
-  auto cs = e.condition_string;
-  cs = cs.substr(cs.find_first_not_of(" \n\t\r"));
-  cs = cs.substr(0, cs.find(">>="));
   std::stringstream stream;
-  stream << "  Expected: " << cs;
   ::testing::internal::StreamMatchResultListener listener{&stream};
   if (matcher.MatchAndExplain(condition, &listener)) return {};
-  stream << " ";
+
+  auto [condition_string, _] = split_condition_string(e.condition_string, ">>=");
+  stream << "Expected: " << condition_string << " ";
   matcher.DescribeTo(&stream);
-  stream << "\n  Argument was: " << PrintToString(condition);
+  stream << "\nArgument: " << PrintToString(condition);
   return std::move(stream).str();
 }
 
@@ -464,3 +588,40 @@ struct Matcher {
   void DescribeTo(std::ostream *os) const { description(*os, false); }
   void DescribeNegationTo(std::ostream *os) const { description(*os, true); }
 };
+
+template <typename M>
+constexpr bool is_gtest_matcher =
+    requires(M const matcher) { typename M::is_gtest_matcher; };
+// Annoyingly, some matchers from gmock don't
+// flag themselves for easy metaprogramming. Specialize
+// for them explicitly.
+template <typename M>
+constexpr bool is_gtest_matcher<testing::PolymorphicMatcher<M>> = true;
+
+/// Creates a matcher that matches any value that m doesn't match.
+export template <typename M>
+  requires is_gtest_matcher<M>
+auto operator not(M m) {
+  return Not(std::move(m));
+}
+
+// TODO fold into a single AllOf/AnyOf matcher for
+// con/disjunctions with more than two members
+
+/// Creates a matcher that matches only if both argument matchers do.
+export template <typename L, typename R>
+  requires(is_gtest_matcher<L> and is_gtest_matcher<R>)
+auto operator and(L left, R right) {
+  return AllOf(std::move(left), std::move(right));
+}
+
+/// Creates a matcher that matches only if both argument matchers do.
+export template <typename L, typename R>
+  requires(is_gtest_matcher<L> and is_gtest_matcher<R>)
+auto operator or(L left, R right) {
+  return AnyOf(std::move(left), std::move(right));
+}
+
+export auto operator""_r(char const *re, size_t) {
+  return ContainsRegex(re);
+}

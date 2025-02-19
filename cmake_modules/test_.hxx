@@ -98,8 +98,7 @@
 ///   // ~/maud/.build/_maud/project_tests/unit testing/basics.cxx:21: Failure
 ///   // Expected: str has substring "boo"
 ///   // Argument was: "hello world"
-#define EXPECT_(...)                                                                  \
-  ::expect_helper::Expectation {                                                      \
-    __FILE__, __LINE__,                                                               \
-        (::expect_helper::Begin{} <= __VA_ARGS__, ::expect_helper::End{#__VA_ARGS__}) \
-  }
+#define EXPECT_(...)                          \
+  ::expect_helper::Expectation::maybe_unused( \
+      {__FILE__, __LINE__,                    \
+       (::expect_helper::Begin{} <= __VA_ARGS__, ::expect_helper::End{#__VA_ARGS__})})
