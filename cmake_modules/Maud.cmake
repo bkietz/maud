@@ -327,7 +327,8 @@ function(_maud_write_scan_script)
 
   get_directory_property(flags COMPILE_OPTIONS)
   list(JOIN flags " " flags)
-  set(flags "@<OBJECT>.flags ${flags} ${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
+  string(PREPEND flags " `cat <OBJECT>.flags`")
+  string(PREPEND flags " ${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
   string(REPLACE "SHELL:" "" flags "${flags}")
 
   if(MSVC)
