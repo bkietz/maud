@@ -622,6 +622,4 @@ auto operator or(L left, R right) {
   return AnyOf(std::move(left), std::move(right));
 }
 
-export auto operator""_r(char const *re, size_t) {
-  return ContainsRegex(re);
-}
+export auto operator""_r(char const *re, size_t) { return ContainsRegex(re); }
