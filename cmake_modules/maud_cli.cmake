@@ -10,7 +10,8 @@ foreach(i RANGE 4 ${CMAKE_ARGC})
   set(arg "${CMAKE_ARGV${i}}")
 
   if(arg MATCHES "^-[DWCTA].*$")
-    list(APPEND cmake_args "${CMAKE_ARGV${i}}")
+    string(REPLACE ";" "\\;" cmake_arg "${CMAKE_ARGV${i}}")
+    list(APPEND cmake_args "${cmake_arg}")
   elseif(arg MATCHES "^-+([^-][^= ]*)=(.*)$")
     # handle kebab case
     string(REPLACE - _ arg_name ARG_${CMAKE_MATCH_1})

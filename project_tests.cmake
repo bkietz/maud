@@ -581,6 +581,34 @@ macro("project test: rendered in2 source")
 endmacro()
 
 
+macro("project test: rendering one in2 multiple times")
+  write(
+    constant.cxx.in2
+    [[@
+      cmake_path(GET RENDER_FILE PARENT_PATH dir)
+      foreach(i RANGE 10)
+        set(RENDER_FILE "${dir}/constant_${i}.cxx")
+        @
+        export module constant_@i@;
+        export auto constexpr CONSTANT_@i@ = @i@;
+        @
+      endforeach()
+    ]]
+  )
+  write(
+    assertions.cxx
+    [[
+      import executable;
+      import constant_7;
+      static_assert(CONSTANT_7 == 7);
+      int main() {}
+    ]]
+  )
+
+  run(COMMAND maud --log-level=VERBOSE)
+endmacro()
+
+
 macro("project test: c++17 project")
   write(
     src/src-y.cxx

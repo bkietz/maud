@@ -13,19 +13,7 @@ NEXT
     is just as good as whatever cmake might raise
 - more test projects
   - use a maud based project with fetchcontent
-  - install documentation
-  - render one in2 multiple times, one for each value from a list
-    ```
-    @
-    set(files a b c)
-    list(TRANSFORM files PREPEND "${RENDER_FILE}_")
-    foreach(RENDER_FILE ${files})
-      file(WRITE "${RENDER_FILE}" "")
-      @
-      this is @RENDER_FILE@
-      @
-    endforeach()
-    ```
+  - build man pages and install
 - improve docs
   - make zero conf docs actually work
   - generate a default full depth toctree and all-target glossary page
