@@ -1203,11 +1203,32 @@ function(_maud_setup)
     MARK_AS_ADVANCED
   )
 
+  _maud_set(
+    _MAUD_VALID_SPHINX_BUILDERS
+    html dirhtml singlehtml htmlhelp qthelp devhelp applehelp epub
+    latex texinfo man text gettext doctest xml pseudoxml linkcheck
+  )
   option(
     # Should this be multiple boolean options like SPHINX_BUILD_DIRHTML?
     SPHINX_BUILDERS
-    STRING "A ;-list of builders which will be used with Sphinx."
+    STRING "
+    A ;-list of builders which will be used with Sphinx. Valid builders are:
+    ${_MAUD_VALID_SPHINX_BUILDERS}
+    "
     DEFAULT "dirhtml"
+    VALIDATE CODE "
+      set(invalid \"\${SPHINX_BUILDERS}\")
+      list(REMOVE_ITEM invalid ${_MAUD_VALID_SPHINX_BUILDERS})
+      if(invalid)
+        message(
+          FATAL_ERROR
+          \"
+          SPHINX_BUILDERS included \${invalid}
+          valid entries are ${_MAUD_VALID_SPHINX_BUILDERS}
+          \"
+        )
+      endif()
+    "
   )
 endfunction()
 
@@ -1396,17 +1417,7 @@ function(_maud_setup_doc)
   set_property(GLOBAL APPEND PROPERTY JOB_POOLS sphinx_build=1)
 
   set(all_build_logs)
-  foreach(
-    builder
-
-    html dirhtml singlehtml
-    htmlhelp qthelp devhelp applehelp
-    epub latex texinfo
-    man
-    text gettext
-    doctest linkcheck
-    xml pseudoxml
-  )
+  foreach(builder ${SPHINX_BUILDERS})
     add_custom_command(
       OUTPUT "${doc}/${builder}.log"
       DEPENDS
@@ -1429,10 +1440,7 @@ function(_maud_setup_doc)
       COMMENT "Building ${builder} with sphinx"
     )
     add_custom_target(documentation.${builder} DEPENDS "${doc}/${builder}.log")
-
-    if("${builder}" IN_LIST SPHINX_BUILDERS)
-      add_dependencies(documentation documentation.${builder})
-    endif()
+    add_dependencies(documentation documentation.${builder})
   endforeach()
 endfunction()
 
