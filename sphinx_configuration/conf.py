@@ -67,7 +67,10 @@ extlinks = {
     "cxx20": ("https://timsong-cpp.github.io/cppwp/n4868/%s", "C++20:%s"),
     # TODO this should be intersphinx instead
     "cmake": ("https://cmake.org/cmake/help/latest/%s", None),
-    "mastering-cmake": ("https://cmake.org/cmake/help/book/mastering-cmake/chapter/%s", None),
+    "mastering-cmake": (
+        "https://cmake.org/cmake/help/book/mastering-cmake/chapter/%s",
+        None,
+    ),
     "gtest": ("https://google.github.io/googletest/%s", None),
     "sphinx": ("https://www.sphinx-doc.org/en/master/usage/%s", None),
 }
@@ -95,3 +98,15 @@ def setup(app):
     # app.add_lexer("c++.in2", lexer)
     # TODO make a utility for building in2 lexers and embed cmake's syntax
     # https://pygments.org/docs/lexerdevelopment/#using-multiple-lexers
+    app.add_config_value(
+        name="maud",
+        description="the Maud CMake adapter",
+        default=None,
+        rebuild="",
+    )
+
+    from trike import _extend_with_formatted_path
+    from sphinx.directives.code import LiteralInclude
+    from sphinx.directives.other import Include
+    app.add_directive("f-include", _extend_with_formatted_path(Include))
+    app.add_directive("f-literalinclude", _extend_with_formatted_path(LiteralInclude))

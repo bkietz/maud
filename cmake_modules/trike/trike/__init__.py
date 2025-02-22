@@ -507,7 +507,32 @@ class CppModuleDirective(SphinxDirective):
         return []
 
 
-class LiterateIncludeerateIncludeDirective(SphinxDirective):
+def _extend_with_formatted_path(cls):
+    class FormattedPathInclude(cls):
+        def run(self) -> list[Node]:
+            ns = {name: value for name, value, _ in self.config}
+            ns["app"] = self.env.app
+            try:
+                path = Path(eval(f"f'''{self.arguments[0]}'''", ns))  # NoQA: S307
+                if path.is_absolute():
+                    srcdir = Path(self.env.app.srcdir)
+                    for i, p in enumerate((srcdir, *srcdir.parents)):
+                        if path.is_relative_to(p):
+                            path = Path(*i * [".."]) / path.relative_to(p)
+                            break
+                self.arguments[0] = str(path)
+            except Exception as err:
+                from traceback import format_exception_only
+                msg = "".join(format_exception_only(err.__class__, err))
+                msg = "Exception occurred in include path expression:\n{msg}"
+                return [self.state.document.reporter.error(msg)]
+            else:
+                return super().run()
+    return FormattedPathInclude
+
+
+@_extend_with_formatted_path
+class LiterateIncludeDirective(SphinxDirective):
     "Include source files, interpreting floating /// as prose between code blocks"
     has_content = False
     required_arguments = 1
