@@ -3,7 +3,7 @@ import re
 
 def read_cache(build_dir: str, cache):
     ENTRY = re.compile("([^#/].*):(.+)=(.*)")
-    FALSE_STRINGS = {""} | set("0 FALSE OFF N NO IGNORE NOTFOUND".split())
+    FALSE_STRINGS = {"", *"0 FALSE OFF N NO IGNORE NOTFOUND".split()}
     INTERNAL_PATHS = set("CMAKE_SOURCE_DIR CMAKE_BINARY_DIR MAUD_DIR".split())
 
     cache_txt = Path(build_dir) / "CMakeCache.txt"
@@ -20,6 +20,13 @@ def read_cache(build_dir: str, cache):
 
 
 def setup(app):
+    app.add_config_value(
+        name="maud",
+        description="the Maud CMake adapter",
+        default=__import__(__name__),
+        rebuild="",
+    )
+
     return {
         "version": "0.1",
         "parallel_read_safe": True,
