@@ -1,7 +1,7 @@
-.. image:: CMAKE_SOURCE_DIR/cmake_modules/trike/trike.png
+.. image:: trike.png
   :class: only-light
 
-.. image:: CMAKE_SOURCE_DIR/cmake_modules/trike/trike-dark.png
+.. image:: trike-dark.png
   :class: only-dark
 
 Trike

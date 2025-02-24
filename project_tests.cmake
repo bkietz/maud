@@ -803,13 +803,6 @@ macro("project test: options")
   assert([[preset_E STREQUAL "A"]])
   assert([[preset_LEGACY_0 STREQUAL "OFF"]])
   assert([[preset_LEGACY_1 STREQUAL "ON"]])
-  assert([[preset_MAUD_CXX_HEADER_EXTENSIONS STREQUAL "hxx hpp h hh h++"]])
-  assert([[preset_MAUD_CXX_SOURCE_EXCLUSION_PATTERN STREQUAL ""]])
-  assert([[
-    preset_MAUD_CXX_SOURCE_EXTENSIONS
-    STREQUAL
-    "cxx cxxm ixx mxx cpp cppm cc ccm c++ c++m"
-  ]])
   assert([[preset_SPHINX_BUILDERS STREQUAL "dirhtml"]])
 endmacro()
 

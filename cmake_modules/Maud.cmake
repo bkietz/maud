@@ -41,6 +41,8 @@ function(_maud_set_value_only var)
       ${var} "${ARGN}" CACHE UNINITIALIZED
       "No help, variable specified on the command line."
     )
+    # TODO remove this janky nonsense; I only need it for options anyway.
+    # Just add ${OPTION_NAME}_PREDEF_VALUE
   endif()
 endfunction()
 
@@ -392,30 +394,15 @@ function(_maud_cxx_sources)
     return()
   endif()
 
-  set(ext_regex ${MAUD_CXX_SOURCE_EXTENSIONS})
-  string(REPLACE "+" "[+]" ext_regex "${ext_regex}")
-  string(REPLACE " " "|" ext_regex "${ext_regex}")
-
-  glob(_MAUD_CXX_SOURCES CONFIGURE_DEPENDS "[.](${ext_regex})$")
-
-  # TODO handle this (and other glob exclusions) with a source property
-  # rather than another glob. Then if a glob is desired, we can write
-  # glob(CXX_EXCLUDED_SOURCES "cmake_modules/.*[.]cxx")
-  # foreach(source ${CXX_EXCLUDED_SOURCES})
-  #   # set the excluded property
-  # endforeach()
-  if(MAUD_CXX_SOURCE_EXCLUSION_PATTERN)
-    list(
-      # This doesn't alter the value in the cache, just the local value
-      FILTER _MAUD_CXX_SOURCES
-      EXCLUDE REGEX "${MAUD_CXX_SOURCE_EXCLUSION_PATTERN}"
-    )
-  endif()
-  _maud_set(_MAUD_CXX_SCANNED_SOURCES "${_MAUD_CXX_SOURCES}")
+  glob(
+    MAUD_CXX_MODULE_SOURCES
+    CONFIGURE_DEPENDS
+    "[.](cxxm?|cppm?|ccm?|c[+][+]m?|ixx|mxx)$"
+  )
 
   _maud_write_scan_script()
   set(input)
-  foreach(source_file ${_MAUD_CXX_SCANNED_SOURCES})
+  foreach(source_file ${MAUD_CXX_MODULE_SOURCES})
     _maud_get_ddi_path("${source_file}" ddi)
     cmake_path(REMOVE_EXTENSION ddi LAST_ONLY OUTPUT_VARIABLE obj_path)
     get_source_file_property(
@@ -440,7 +427,7 @@ function(_maud_cxx_sources)
     OUTPUT_FILE "${MAUD_DIR}/scan_input.list.log"
     COMMAND_ERROR_IS_FATAL ANY
   )
-  foreach(source_file ${_MAUD_CXX_SCANNED_SOURCES})
+  foreach(source_file ${MAUD_CXX_MODULE_SOURCES})
     _maud_scan("${source_file}")
   endforeach()
 endfunction()
@@ -930,12 +917,12 @@ function(_maud_maybe_regenerate)
     return()
   endif()
 
-  if(NOT _MAUD_CXX_SCANNED_SOURCES)
+  if(NOT MAUD_CXX_MODULE_SOURCES)
     return()
   endif()
 
   set(input)
-  foreach(source_file ${_MAUD_CXX_SCANNED_SOURCES})
+  foreach(source_file ${MAUD_CXX_MODULE_SOURCES})
     _maud_get_ddi_path("${source_file}" ddi)
     if("${ddi}" IS_NEWER_THAN "${source_file}")
       message(VERBOSE "skipping rescan of ${source_file}")
@@ -954,7 +941,7 @@ function(_maud_maybe_regenerate)
     COMMAND_ERROR_IS_FATAL ANY
   )
 
-  foreach(source_file ${_MAUD_CXX_SCANNED_SOURCES})
+  foreach(source_file ${MAUD_CXX_MODULE_SOURCES})
     _maud_get_ddi_path("${source_file}" ddi)
     if("${ddi}" IS_NEWER_THAN "${source_file}")
       message(VERBOSE "skipping rescan of ${source_file}")
@@ -1174,26 +1161,6 @@ function(_maud_setup)
     DEFAULT OFF
   )
 
-  option(
-    MAUD_CXX_SOURCE_EXTENSIONS
-    STRING "Files with any of these extensions will be scanned as C++ modules."
-    DEFAULT "cxx cxxm ixx mxx cpp cppm cc ccm c++ c++m"
-    MARK_AS_ADVANCED
-  )
-
-  option(
-    MAUD_CXX_SOURCE_EXCLUSION_PATTERN
-    STRING "If provided, files matching this pattern will not be scanned as C++ modules."
-    MARK_AS_ADVANCED
-  )
-
-  option(
-    MAUD_CXX_HEADER_EXTENSIONS
-    STRING "Files with any of these extensions will be recognized as C++ headers."
-    DEFAULT "hxx hpp h hh h++"
-    MARK_AS_ADVANCED
-  )
-
   cmake_language(GET_MESSAGE_LOG_LEVEL level)
   option(
     CMAKE_MESSAGE_LOG_LEVEL
@@ -1234,14 +1201,31 @@ endfunction()
 
 
 function(_maud_finalize_generated)
-  if(NOT DEFINED _MAUD_ALL_GENERATED)
-    _maud_glob(_MAUD_ALL_GENERATED "${MAUD_DIR}/rendered")
-    _maud_set(_MAUD_ALL_GENERATED ${_MAUD_ALL_GENERATED})
+  if(DEFINED _MAUD_ALL_GENERATED)
+    return()
   endif()
+
+  _maud_glob(_MAUD_ALL_GENERATED "${MAUD_DIR}/rendered")
+  _maud_set(_MAUD_ALL_GENERATED ${_MAUD_ALL_GENERATED})
+
+  foreach(glob ${_MAUD_GLOBS})
+    set(patterns "${_MAUD_GLOB_ARGUMENTS_${glob}}")
+    if("EXCLUDE_RENDERED" IN_LIST patterns)
+      continue()
+    endif()
+    list(REMOVE_ITEM patterns CONFIGURE_DEPENDS)
+    set(gen_matches "${_MAUD_ALL_GENERATED}")
+    _maud_filter(gen_matches ${patterns})
+    list(TRANSFORM gen_matches PREPEND "${MAUD_DIR}/rendered/")
+    list(APPEND ${glob} ${gen_matches})
+    _maud_set(${glob} "${${glob}}")
+  endforeach()
 endfunction()
 
 
 function(_maud_cmake_modules)
+  # TODO this really only needs a single call to glob(), from which we
+  # can extract the auto-included and module dirs.
   glob(_MAUD_CMAKE_MODULE_DIRS CONFIGURE_DEPENDS EXCLUDE_RENDERED "(/|^)cmake_modules$")
   foreach(module_dir ${_MAUD_CMAKE_MODULE_DIRS})
     list(APPEND CMAKE_MODULE_PATH "${module_dir}")
@@ -1298,6 +1282,11 @@ endfunction()
 
 
 function(_maud_setup_doc)
+  if(NOT SPHINX_BUILDERS)
+    message(VERBOSE "No Sphinx builders enabled, abandoning doc")
+    return()
+  endif()
+
   find_package(Python3)
   if(NOT TARGET Python3::Interpreter)
     # TODO instead, error here (but include instructions to disable doc)
@@ -1335,8 +1324,6 @@ function(_maud_setup_doc)
 
   file(REMOVE_RECURSE "${doc}")
   file(MAKE_DIRECTORY "${doc}/stage")
-  # TODO verify that this link is sufficient to literalinclude and document it
-  file(CREATE_LINK "${CMAKE_SOURCE_DIR}" "${doc}/stage/CMAKE_SOURCE_DIR" SYMBOLIC)
 
   file(
     WRITE "${MAUD_DIR}/maud_sphinx_adapter/pyproject.toml"
@@ -1380,10 +1367,6 @@ function(_maud_setup_doc)
     COMMAND_ERROR_IS_FATAL ANY
   )
   set(SPHINX_BUILD "${doc}/venv/bin/sphinx-build")
-
-  set(ext_regex "${MAUD_CXX_HEADER_EXTENSIONS}")
-  string(REPLACE "+" "[+]" ext_regex "${ext_regex}")
-  string(REPLACE " " "|" ext_regex "${ext_regex}")
 
   set(all_staged)
   foreach(file ${_MAUD_RST})

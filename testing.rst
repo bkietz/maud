@@ -1,7 +1,7 @@
-.. _unit tests:
+.. _testing:
 
-Unit tests
-----------
+Testing
+-------
 
 While scanning modules, ``Maud`` will detect and
 :cmake:`register <command/add_test.html>` C++ unit tests.
@@ -153,10 +153,12 @@ Then this could be used in a unit test:
         expect_equals(1 + 2, 3);
       }
 
+.. _formatting-test:
+
 Formatting test
 ~~~~~~~~~~~~~~~
 
-By default, if `ClangFormat <https://clang.llvm.org/docs/ClangFormat.html>`_ is
+By default, if `clang-format <https://clang.llvm.org/docs/ClangFormat.html>`_ is
 detected then a test will be added which asserts that files are formatted
 consistently::
 
@@ -169,20 +171,20 @@ consistently::
   export void compile_in2(std::istream &is,   std::ostream &os);
                                            ^
 
-A target will also be added which formats files in place::
+A ``fix`` target will also be added which formats files in place::
 
-  $ ninja -C fix.clang-format
+  $ ninja fix.clang-format
 
-Since the set of files which should be formatted is not necessarily identical to
-the set which should be compiled, a separate glob must be provided in the project's
-root ``.clang-format`` file::
+Since the set of files which should be formatted is not necessarily
+identical to the set which should be compiled, the separate
+:ref:`glob(MAUD_CXX_FORMATTED_SOURCES) <built-in-globs>`
+configures which files ``clang-format`` will be applied to. Since different
+major versions of ``clang-format`` will frequently have different and
+backwards-incompatible behavior and parameter spaces, the target version must
+be specified in a ``.clang-format`` file::
 
-  # Maud: {
-  #   "version": 18,
-  #   "patterns": [
-  #     "\\.[ch]xx$",
-  #     "!rapidyaml\\.hxx"
-  #   ]
-  # }
+  # Versions: 18
   BasedOnStyle: Google
   ColumnLimit: 90
+
+.. TODO later

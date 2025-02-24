@@ -76,7 +76,7 @@ module ``executable``. The executable's name the
 :cmake:`STEM <command/cmake_path.html#decomposition>`
 (source file name, stripped of all extensions).
 
-:ref:`unit tests` are generated from sources which import the special
+:ref:`testing` are generated from sources which import the special
 module ``test_``.
 
 Executables and tests can both be implementation units of a module.

@@ -21,7 +21,7 @@ known issues.
 To me it seems better to provide a minimal, uniform project structure which
 is mostly defined by things that aren't there; an **empty** directory is
 a valid ``Maud`` project. If you want to start by writing a unit test,
-you can do so by writing its :ref:`C++ source <unit tests>` and nothing else.
+you can do so by writing its :ref:`C++ source <testing>` and nothing else.
 If you want to start by writing documentation, you can do so by writing its
 :ref:`rst source <documentation>` and nothing else. Without consulting any
 script or manifest, it's possible to read a C++ source and know what it's
@@ -43,7 +43,7 @@ Features
     ``Maud`` extends CMake's built in globbing support with more expressive
     patterns, support for exclusion as well as inclusion, and greater performance.
 
-    To briefly summarize, globs are used to find:
+    To briefly summarize, :ref:`built-in-globs` are used to find:
 
     - ``cmake_modules`` directories, which are added to the module path
     - ``.cmake`` modules, which are automatically included

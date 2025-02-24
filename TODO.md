@@ -77,32 +77,6 @@ default we don't run the tests or install (but they logically belong
 to that same singular flow).
 
 
-TODO: only support overriding default globs with glob() calls
--------------------------------------------------------------
-
-`MAUD_CXX_SOURCE_EXTENSIONS` etc is unsatisfactory. As a default
-for c++ module sources it makes sense, but if a user needs to
-override somehow they probably want something more sophisticated
-than "only scan .cpp files". So instead of requiring them to edit
-a partial pattern list that maud then executes, just
-document that sources in the list `MAUD_CXX_SCANNED_SOURCES` will
-be scanned, and if that list is not defined then it will default
-to `**/*.(cxx|c++|...)`. This is consistent with the philosophy of
-"have a good default, provide *all* the power when overriding"; the
-user need not even glob, they might explicitly list sources and
-that should just work. Globs which should be configurable this way:
-
-- c++ sources for module scanning
-- c++ sources and headers for apidoc scanning
-- c++ sources and headers for clang-format check/fix
-
-(but not: cmake_modules/, **/*.cmake, include/, sphinx things, ...)
-
-This is dependent on `maud_defer` so that the user glob can pick
-up generated files, or we require the user to pass a full pattern
-list after all like `MAUD_CXX_SCANNED_SOURCES_PATTERNS`.
-
-
 TODO: document how to do optional dependencies
 ----------------------------------------------
 

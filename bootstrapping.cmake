@@ -1,7 +1,9 @@
-# Exclude Maud's own "system" c++ when bootstrapping
-set(
-  MAUD_CXX_SOURCE_EXCLUSION_PATTERN
-  "cmake_modules/"
+glob(
+  MAUD_CXX_MODULE_SOURCES
+  CONFIGURE_DEPENDS
+  ".cxx$"
+  # Exclude Maud's own "system" c++ when bootstrapping
+  "!cmake_modules/"
 )
 
 # When building Muad itself, we need the maud_inject_regenerate

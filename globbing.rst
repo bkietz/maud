@@ -136,16 +136,64 @@ variable normally.
     would include ``hello.cxx, hello.hxx`` but would exclude ``_disabled.cxx``
     and any files in ``world_thirdparty/``.
 
+.. _built-in-globs:
+
 Built-in globs
 ==============
 
-By default the extensions used to identify C++ source files are
-``.cxx .cxxm .ixx .mxx .cpp .cppm .cc .ccm .c++ .c++m``.
-These can be customized by setting the variable ``MAUD_CXX_SOURCE_EXTENSIONS``.
+``Maud`` uses several globs internally:
 
-Directories and files whose names start with ``.`` are excluded from all globs.
-``Maud`` names build directories ``.build/`` by default to ensure that they are
-excluded from globs in the common case where the build directory is nested in
-the source root. ``Maud`` relies on build directory files being excluded from
-globs of source files, so if a non-default build directory name is used then
-things may break.
+``MAUD_IN2_TEMPLATES``
+    By default, this includes all files with extension ``.in2``.
+
+    These files will be rendered and the results included in subsequent globs.
+
+``MAUD_INCLUDE_DIRS``
+    By default, this includes all directories named ``include``.
+
+    These directories will be added to the project-wide include path.
+
+``MAUD_CXX_MODULE_SOURCES``
+    By default, this includes all files with any extension in
+    ``.cxx .cxxm .ixx .mxx .cpp .cppm .cc .ccm .c++ .c++m``.
+
+    These files will be scanned for C++ :ref:`modules`, and the results
+    used to define targets and linkage.
+
+``MAUD_CXX_FORMATTED_SOURCES``
+    By default, this includes all files with any extension listed
+    for ``MAUD_CXX_MODULE_SOURCES`` or in ``.hxx .hpp .hh .h++ .h``.
+
+    These files will be :ref:`tested for consistent formatting <formatting-test>`
+    using ``clang-format``.
+
+``MAUD_DOCUMENTATION_SOURCES``
+    By default, this includes all files with any extension in
+    ``.rst .myst .md``, excluding those whose ``STEM`` is spelled
+    in SHOUTY_SNAKE_CASE (to avoid building documentation from
+    ``README.md`` when not explicitly included).
+
+    These will be passed to Sphinx and used to build :ref:`documentation`.
+
+To override any of these, call :ref:`glob() <glob-function>`
+to set the ``CACHE`` variable before it is required by ``Maud``.
+For example to scan only ``src/**.ixx`` files, write
+
+.. code-block:: cmake
+
+  glob(
+    MAUD_CXX_MODULE_SOURCES
+    CONFIGURE_DEPENDS
+    "^src/.*[.]ixx$"
+  )
+
+(The :ref:`cmake` inclusion globs cannot be overridden this way.)
+
+``Maud`` relies on build files being excluded from globs of source files,
+which is ensured by default: the default build directory name is ``.build/``
+and all globs exclude directories and files whose names start with ``.``
+If a non-default build directory name is used or the globs are adjusted from
+their defaults, then the user must ensure build files are still excluded from
+globs. I recommend upholding the convention by naming build
+directories ``.$name`` and excluding ``.$name`` from globs with ``!(/|^)[.]``.
+

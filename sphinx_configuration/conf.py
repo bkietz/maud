@@ -4,6 +4,7 @@ import pygments.lexers.c_cpp
 import sphinx.highlighting
 
 from pathlib import Path
+from shutil import copy
 
 # TODO instead of trying to provide defaults for config settings,
 # let the maud extension just assert that config doesn't have any errors
@@ -103,3 +104,6 @@ def setup(app):
 
     app.add_directive("f-include", _extend_with_formatted_path(Include))
     app.add_directive("f-literalinclude", _extend_with_formatted_path(LiteralInclude))
+
+    for png in maud.cache.CMAKE_SOURCE_DIR.rglob("trike/trike*.png"):
+        copy(png, app.srcdir / png.name)
