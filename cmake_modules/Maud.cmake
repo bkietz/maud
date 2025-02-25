@@ -1074,10 +1074,17 @@ function(_maud_setup)
   _maud_set(CMAKE_BINARY_DIR "${CMAKE_BINARY_DIR}")
   _maud_set(PROJECT_NAME "${PROJECT_NAME}")
   _maud_set(MAUD_DIR "${CMAKE_BINARY_DIR}/_maud")
+
   if(NOT EXISTS "${CMAKE_BINARY_DIR}/CMakeCache.txt")
     set(_MAUD_FRESH ON PARENT_SCOPE)
   else()
     set(_MAUD_FRESH OFF PARENT_SCOPE)
+  endif()
+
+  if(_MAUD_FRESH AND NOT "$ENV{MAUD_DISABLE_ENVIRONMENT_OPTIONS}")
+    set(_MAUD_ENV_OPTIONS ON PARENT_SCOPE)
+  else()
+    set(_MAUD_ENV_OPTIONS OFF PARENT_SCOPE)
   endif()
 
   # I'd like to use CMAKE_INCLUDE_FLAG_CXX but I need
@@ -1516,10 +1523,9 @@ function(option name type)
   _maud_set_include(_MAUD_ALL_OPTIONS ${name})
 
   if(
-    DEFINED ENV{${name}}
+    _MAUD_ENV_OPTIONS
+    AND DEFINED ENV{${name}}
     AND NOT DEFINED CACHE{${name}}
-    AND NOT EXISTS "${CMAKE_BINARY_DIR}/CMakeCache.txt"
-    AND NOT "$ENV{MAUD_DISABLE_ENVIRONMENT_OPTIONS}"
   )
     # set the option's value from the environment if appropriate
     _maud_set_value_only(${name} "$ENV{${name}}")
@@ -1536,13 +1542,13 @@ function(option name type)
       # directory of the configuring cmake process.
       cmake_path(NATIVE_PATH ${name} NORMALIZE path)
       cmake_path(ABSOLUTE_PATH path BASE_DIRECTORY "${MAUD_WORKING_DIR}")
-      _maud_set_value_only(${name} "${path}")
+      set_property(CACHE ${name} PROPERTY VALUE "${path}")
     endif()
   endif()
 
   if(
     DEFINED CACHE{${name}}
-    AND NOT EXISTS "${CMAKE_BINARY_DIR}/CMakeCache.txt"
+    AND _MAUD_FRESH
     AND "${_MAUD_CONSTRAINTS_ON_${name}}" STREQUAL ""
   )
     # this is a fresh build and the user has definitely configured this option
@@ -1871,10 +1877,9 @@ function(_maud_options_summary)
     endif()
 
     if(
-      DEFINED ENV{${name}}
+      _MAUD_ENV_OPTIONS
+      AND DEFINED ENV{${name}}
       AND "$CACHE{${name}}" STREQUAL "$ENV{${name}}"
-      AND NOT "$ENV{MAUD_DISABLE_ENVIRONMENT_OPTIONS}"
-      AND NOT EXISTS "${CMAKE_BINARY_DIR}/CMakeCache.txt"
     )
       list(APPEND reasons "environment")
     endif()
