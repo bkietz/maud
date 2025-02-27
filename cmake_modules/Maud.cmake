@@ -329,8 +329,8 @@ function(_maud_write_scan_script)
 
   get_directory_property(flags COMPILE_OPTIONS)
   list(JOIN flags " " flags)
-  string(PREPEND flags " `cat <OBJECT>.flags`")
-  string(PREPEND flags " ${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
+  string(PREPEND flags " `cat <OBJECT>.flags` ")
+  string(PREPEND flags " ${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION} ")
   string(REPLACE "SHELL:" "" flags "${flags}")
 
   if(MSVC)
@@ -1016,7 +1016,7 @@ function(_maud_load_cache build_dir)
 
   file(GLOB index "${build_dir}/.cmake/api/v1/reply/index-*.json")
   if(NOT index OR index MATCHES ";")
-    message(FATAL_ERROR "expected single index file, got '${index}")
+    message(FATAL_ERROR "expected single index file, got '${index}'")
   endif()
   file(READ "${index}" index)
 
@@ -1294,18 +1294,6 @@ function(_maud_setup_doc)
     return()
   endif()
 
-  glob(
-    _MAUD_RST
-    CONFIGURE_DEPENDS
-    "[.]rst$"
-    "!(^|/)[A-Z_0-9]+[.]rst$"
-    "!(/|^)_"
-  )
-  if(NOT _MAUD_RST)
-    message(VERBOSE "Not one doc file was detected 😞")
-    return()
-  endif()
-
   # TODO document that conf can't be generated
   glob(
     _MAUD_SPHINX_CONF
@@ -1321,8 +1309,6 @@ function(_maud_setup_doc)
   cmake_path(GET _MAUD_SPHINX_CONF PARENT_PATH conf_dir)
 
   set(doc "${CMAKE_BINARY_DIR}/documentation")
-
-  file(REMOVE_RECURSE "${doc}")
   file(MAKE_DIRECTORY "${doc}/stage")
 
   file(
@@ -1348,49 +1334,38 @@ function(_maud_setup_doc)
     "read_cache('${CMAKE_BINARY_DIR}', maud.cache)\n"
   )
 
-  message(STATUS "Building virtual env ${doc}/venv for Sphinx")
-  execute_process(COMMAND "${Python3_EXECUTABLE}" -m venv --clear "${doc}/venv")
-  execute_process(
+  execute_process(COMMAND "${Python3_EXECUTABLE}" -m venv "${doc}/venv")
+  find_program(
+    pip pip NO_CACHE REQUIRED
+    NO_DEFAULT_PATH PATHS "${doc}/venv/bin" "${doc}/venv/Scripts"
+  )
+
+  add_custom_command(
+    COMMENT "Building virtual env ${doc}/venv for Sphinx"
+    OUTPUT "${doc}/venv/pip.log"
+    DEPENDS "${_MAUD_SELF_DIR}/sphinx_requirements.txt"
     COMMAND
-      "${doc}/venv/bin/pip" install
+      "${pip}" install
       --editable "${MAUD_DIR}/maud_sphinx_adapter"
       --editable "${_MAUD_SELF_DIR}/trike"
       --requirement "${_MAUD_SELF_DIR}/sphinx_requirements.txt"
       --isolated
       --require-virtualenv
-      --ignore-installed
+      #--ignore-installed
       --disable-pip-version-check
       --no-input
       --quiet
       --log "${doc}/venv/pip.log"
       --report "${doc}/venv/pip.report.json"
-    COMMAND_ERROR_IS_FATAL ANY
   )
-  set(SPHINX_BUILD "${doc}/venv/bin/sphinx-build")
 
-  set(all_staged)
-  foreach(file ${_MAUD_RST})
-    _maud_relative_path("${file}" staged is_gen)
-    cmake_path(GET staged STEM LAST_ONLY stem)
-    if(stem STREQUAL "index")
-      cmake_path(GET staged PARENT_PATH html)
-    else()
-      cmake_path(REMOVE_EXTENSION staged LAST_ONLY OUTPUT_VARIABLE html)
-    endif()
-    cmake_path(ABSOLUTE_PATH staged BASE_DIRECTORY "${doc}/stage")
+  find_program(
+    sphinx sphinx-build NO_CACHE REQUIRED
+    NO_DEFAULT_PATH PATHS "${doc}/venv/bin" "${doc}/venv/Scripts"
+  )
 
-    add_custom_command(
-      OUTPUT "${staged}"
-      DEPENDS "${file}"
-      COMMAND "${CMAKE_COMMAND}" -E copy "${file}" "${staged}"
-      COMMENT "Staging${file}$<$<BOOL:${is_gen}>: (generated)> to ${staged}"
-    )
-    list(APPEND all_staged "${staged}")
-  endforeach()
-
-  # TODO assert there are no dupes in all_staged = collision between source/generated
-
-  add_custom_target(documentation ALL)
+  add_custom_target(documentation)
+  # FIXME maud should make use of Sphinx.env.note_dependency()
 
   # We run sphinx multithreaded. This can pessimize throughput since ninja
   # is probably *also* running `nproc` tasks. If this becomes a problem later,
@@ -1401,16 +1376,13 @@ function(_maud_setup_doc)
 
   set(all_build_logs)
   foreach(builder ${SPHINX_BUILDERS})
-    add_custom_command(
-      OUTPUT "${doc}/${builder}.log"
-      DEPENDS
-        ${all_staged}
-        # FIXME note all of these with Sphinx.env.note_dependency()
-        # if they aren't already noted.
-        "${conf_dir}/conf.py"
+    add_custom_target(
+      documentation.${builder}
+      COMMENT "Building ${builder} with sphinx"
+      DEPENDS "${doc}/venv/pip.log"
       WORKING_DIRECTORY "${doc}"
       COMMAND
-        "${SPHINX_BUILD}"
+        "${sphinx}"
         --builder ${builder}
         --conf-dir "${conf_dir}"
         --doctree-dir doctrees
@@ -1419,10 +1391,7 @@ function(_maud_setup_doc)
         ${builder}  # provide an independent build directory to each builder
         > ${builder}.log
       JOB_POOL sphinx_build
-      COMMAND_EXPAND_LISTS
-      COMMENT "Building ${builder} with sphinx"
     )
-    add_custom_target(documentation.${builder} DEPENDS "${doc}/${builder}.log")
     add_dependencies(documentation documentation.${builder})
   endforeach()
 endfunction()

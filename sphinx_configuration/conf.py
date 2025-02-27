@@ -107,3 +107,6 @@ def setup(app):
 
     for png in maud.cache.CMAKE_SOURCE_DIR.rglob("trike/trike*.png"):
         copy(png, app.srcdir / png.name)
+
+    for rst in maud.cache.CMAKE_SOURCE_DIR.glob("*.rst"):
+        copy(rst, app.srcdir / rst.name)
