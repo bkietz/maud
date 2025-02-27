@@ -1033,6 +1033,9 @@ function(_maud_load_cache build_dir)
     json_list(names "${entry}" properties [] name)
     json_list(values "${entry}" properties [] value)
     foreach(n v IN ZIP_LISTS names values)
+      if(n STREQUAL "MODIFIED")
+        continue()
+      endif()
       set_property(CACHE ${name} PROPERTY ${n} "${v}")
     endforeach()
   endforeach()
@@ -1346,10 +1349,11 @@ function(_maud_setup_doc)
     pip pip NO_CACHE REQUIRED
     NO_DEFAULT_PATH PATHS "${doc}/venv/bin" "${doc}/venv/Scripts"
   )
+  string(REPLACE pip sphinx-build sphinx "${pip}")
 
   add_custom_command(
     COMMENT "Building virtual env ${doc}/venv for Sphinx"
-    OUTPUT "${doc}/venv/pip.log"
+    OUTPUT "${sphinx}"
     DEPENDS "${_MAUD_SELF_DIR}/sphinx_requirements.txt"
     COMMAND
       "${pip}" install
@@ -1366,11 +1370,6 @@ function(_maud_setup_doc)
       --report "${doc}/venv/pip.report.json"
   )
 
-  find_program(
-    sphinx sphinx-build NO_CACHE REQUIRED
-    NO_DEFAULT_PATH PATHS "${doc}/venv/bin" "${doc}/venv/Scripts"
-  )
-
   add_custom_target(documentation)
   # FIXME maud should make use of Sphinx.env.note_dependency()
 
@@ -1381,12 +1380,11 @@ function(_maud_setup_doc)
   # manpages and html at the same time.
   set_property(GLOBAL APPEND PROPERTY JOB_POOLS sphinx_build=1)
 
-  set(all_build_logs)
   foreach(builder ${SPHINX_BUILDERS})
     add_custom_target(
       documentation.${builder}
       COMMENT "Building ${builder} with sphinx"
-      DEPENDS "${doc}/venv/pip.log"
+      DEPENDS "${sphinx}"
       WORKING_DIRECTORY "${doc}"
       COMMAND
         "${sphinx}"
@@ -1394,8 +1392,8 @@ function(_maud_setup_doc)
         --conf-dir "${conf_dir}"
         --doctree-dir doctrees
         --jobs auto
-        stage       # use stage as source directory
-        ${builder}  # provide an independent build directory to each builder
+        stage       # source directory
+        ${builder}  # each builder gets its own out directory
         > ${builder}.log
       JOB_POOL sphinx_build
     )

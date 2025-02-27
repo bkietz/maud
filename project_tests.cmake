@@ -996,9 +996,12 @@ macro("project test: documentation")
   )
   write(
     index.rst
-    [[
-      .. trike-put:: cpp:struct Foo
-    ]]
+[[
+Weeeeee
+=======
+
+.. trike-put:: cpp:struct Foo
+]]
   )
   write(
     sphinx_configuration/conf.py
@@ -1009,6 +1012,9 @@ assert SOME_DOC_OPTION == 'B'
 assert type(BUILD_TESTING) == bool
 exclude_patterns = ["CMAKE_SOURCE_DIR", "Thumbs.db", ".DS_Store"]
 trike_files = list(CMAKE_SOURCE_DIR.glob("*.hxx"))
+from pathlib import Path
+def setup(app):
+    app.srcdir = CMAKE_SOURCE_DIR
 ]]
   )
 
@@ -1025,7 +1031,12 @@ trike_files = list(CMAKE_SOURCE_DIR.glob("*.hxx"))
       };
     ]]
   )
-  run(COMMAND maud  -DSOME_DOC_OPTION=B)
+  run(COMMAND maud -DSOME_DOC_OPTION=B)
+  run(COMMAND cmake --build .build --target documentation)
+  assert([[EXISTS .build/documentation/dirhtml/index.html]])
+  file(READ .build/documentation/dirhtml/index.html index)
+  assert([[index MATCHES "Weeeeee"]])
+  assert([[index MATCHES "a simple foobar struct"]])
 endmacro()
 
 
