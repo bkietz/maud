@@ -1141,7 +1141,6 @@ function(run)
   string(JOIN " " command ${failing} ${ARGN})
 
   set(begin "-------------------------------------")
-  mark_non_empty_last_line(OUT)
   if(failing)
     set(end "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
   else()
@@ -1151,7 +1150,7 @@ function(run)
   message(
     "${command}\n"
     "${begin}[${error_code}]\n"
-    "${OUT}"
+    "${OUT}🔚\n"
     "${end}[${error_code}]\n"
   )
   if(NOT failing)
@@ -1163,22 +1162,13 @@ endfunction()
 
 
 function(write path content)
-  # TODO dedent
   file(WRITE "${path}" "${content}")
-  mark_non_empty_last_line(content)
   message(
     "WRITE ${path}\n"
     "----------------------------------------\n"
-    "${content}"
+    "${content}🔚\n"
     "........................................\n"
   )
-endfunction()
-
-
-function(mark_non_empty_last_line var)
-  if(NOT var MATCHES "\n$")
-    set(var "${var}❌\n" PARENT_SCOPE)
-  endif()
 endfunction()
 
 

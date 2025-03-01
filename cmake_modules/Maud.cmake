@@ -1297,13 +1297,6 @@ function(_maud_setup_doc)
     return()
   endif()
 
-  find_package(Python3)
-  if(NOT TARGET Python3::Interpreter)
-    # TODO instead, error here (but include instructions to disable doc)
-    message(VERBOSE "Could not find Python3, abandoning doc")
-    return()
-  endif()
-
   # TODO document that conf can't be generated
   glob(
     _MAUD_SPHINX_CONF
@@ -1311,12 +1304,26 @@ function(_maud_setup_doc)
     EXCLUDE_RENDERED
     "(^|/)sphinx_configuration/conf.py$"
   )
-  if(_MAUD_SPHINX_CONF MATCHES "^(.*;.*|)$")
-    # TODO if no conf.py is found, dump a decent default into the source tree
-    message(FATAL_ERROR "Sphinx requires exactly one conf.py file but found '${_MAUD_SPHINX_CONF}'")
+  if(NOT _MAUD_SPHINX_CONF)
+    message(VERBOSE "Could not find sphinx_configuration/conf.py, abandoning doc")
+    # TODO fall back to default_sphinx_configuration
+    # TODO provide TARGET fix.generate_sphinx_configuration which dumps the default
     return()
+  elseif(_MAUD_SPHINX_CONF MATCHES ";")
+    message(
+      FATAL_ERROR
+      "Sphinx requires a single sphinx_configuration/conf.py, "
+      "but found '${_MAUD_SPHINX_CONF}'"
+    )
   endif()
   cmake_path(GET _MAUD_SPHINX_CONF PARENT_PATH conf_dir)
+
+  find_package(Python3)
+  if(NOT TARGET Python3::Interpreter)
+    # TODO instead, error here (but include instructions to disable doc)
+    message(VERBOSE "Could not find Python3, abandoning doc")
+    return()
+  endif()
 
   set(doc "${CMAKE_BINARY_DIR}/documentation")
   file(MAKE_DIRECTORY "${doc}/stage")
