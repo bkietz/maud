@@ -7,7 +7,7 @@ import maud_;
 
 using std::operator""s;
 
-auto const TEST_DIR = std::filesystem::path{__FILE__}.parent_path();
+auto const TEST_DIR = std::filesystem::path{BUILD_DIR} / "scan_test_dir";
 
 TEST_(scan) {
   auto yaml = R"(

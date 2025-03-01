@@ -8,7 +8,7 @@ import maud_;
 using std::operator""s;
 
 auto const CASES = Parameter::read_file(DIR / "in2.test.yaml");
-auto const TEST_DIR = std::filesystem::path{__FILE__}.parent_path();
+auto const TEST_DIR = std::filesystem::path{BUILD_DIR} / "in2_test_dir";
 
 TEST_(compilation, CASES) {
   auto name = parameter.name();
