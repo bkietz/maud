@@ -1,5 +1,6 @@
-# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
-# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+# This starter workflow is for a CMake project running on multiple platforms.
+# There is a different starter workflow if you just want a single platform. See:
+# https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
 name: CMake on multiple platforms
 
 on:
@@ -20,7 +21,8 @@ jobs:
       build_output_dir: "${{ github.workspace }}/.build"
 
     strategy:
-      # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
+      # Set fail-fast to false to ensure that feedback is delivered for all matrix
+      # combinations. Consider changing this to true when your workflow is stable.
       fail-fast: false
       matrix:
         os: [ubuntu-latest] #, windows-latest]
@@ -70,6 +72,14 @@ jobs:
           ctest --build-config Debug \
                 --test-dir ${{ env.build_output_dir }} \
                 --output-on-failure
+
+    - name: Build documentation
+      uses: flox/activate-action@v1
+      with:
+        command: >
+          cmake --build ${{ env.build_output_dir }} \
+                --config Debug \
+                --target documentation
 
     - name: Upload doc files
       uses: actions/upload-pages-artifact@v3
