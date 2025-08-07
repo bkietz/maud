@@ -1255,11 +1255,15 @@ endfunction()
 
 
 function(_maud_in2)
-  if("${_MAUD_IN2}" STREQUAL "")
+  glob(_MAUD_IN2_TEMPLATES CONFIGURE_DEPENDS EXCLUDE_RENDERED "[.]in2$")
+  if(NOT _MAUD_IN2_TEMPLATES)
+    return()
+  endif()
+
+  if(NOT _MAUD_IN2)
     find_program(_MAUD_IN2 maud_in2 REQUIRED)
   endif()
 
-  glob(_MAUD_IN2_TEMPLATES CONFIGURE_DEPENDS EXCLUDE_RENDERED "[.]in2$")
   foreach(template ${_MAUD_IN2_TEMPLATES})
     cmake_path(GET template PARENT_PATH dir)
     cmake_path(GET template STEM LAST_ONLY stem)
