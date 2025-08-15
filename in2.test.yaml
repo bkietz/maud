@@ -58,7 +58,7 @@ variable substitution error with invalid name:
     @cmake_policy(SET CMP0010 NEW)@
     @FOO_${BAR@
   render error: |
-    syntax error, .* expecting }.*
+    [Ss]yntax error.*unterminated variable
 
 
 literal at:

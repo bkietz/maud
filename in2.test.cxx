@@ -56,6 +56,10 @@ TEST_(rendering, CASES) {
   if (parameter.has_child("render error")) {
     cmd += " 2> \"" + rendered_path.string() + "\"";
     EXPECT_(std::system(cmd.c_str()) != 0);
-    EXPECT_(read(rendered_path) >>= ContainsRegex(to_view(parameter["render error"])));
+    auto re = to_view(parameter["render error"]);
+    while (re.ends_with("\n")) {
+      re = re.substr(1);
+    }
+    EXPECT_(read(rendered_path) >>= ContainsRegex(re));
   }
 }

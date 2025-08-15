@@ -608,6 +608,11 @@ function(_maud_scan source_file)
   message(VERBOSE "  attaching to ${target_name}")
 
   set_property(TARGET ${target_name} APPEND PROPERTY MAUD_IMPORTS "${imports}")
+  if(is-interface)
+    set_property(
+      TARGET ${target_name} APPEND PROPERTY MAUD_INTERFACE_IMPORTS "${imports}"
+    )
+  endif()
   set_target_properties(
     ${target_name}
     PROPERTIES
@@ -704,6 +709,36 @@ function(_maud_add_test source_file out_target_name)
 endfunction()
 
 
+function(_maud_finalize_import target access import)
+  if(TARGET ${import})
+    target_link_libraries(${target} ${access} ${import})
+    return()
+  endif()
+
+  if(import MATCHES "^(.*)::(.*)$")
+    set(args "${CMAKE_MATCH_1}")
+  else()
+    set(args "${import}.maud" CONFIG)
+  endif()
+  find_package(${args})
+
+  if(NOT TARGET ${import})
+    message(
+      FATAL_ERROR
+      "find_package(${args}) did not produce TARGET ${import} required by ${target}"
+    )
+  endif()
+  target_link_libraries(${target} ${access} ${import})
+
+  get_target_property(transitive_imports ${import} INTERFACE_LINK_LIBRARIES)
+  if(transitive_imports)
+    foreach(import ${transitive_imports})
+      _maud_finalize_import(${target} ${access} ${import})
+    endforeach()
+  endif()
+endfunction()
+
+
 function(_maud_finalize_targets)
   include(GNUInstallDirs)
   message(STATUS "TARGETS:")
@@ -730,6 +765,7 @@ function(_maud_finalize_targets)
     endif()
 
     get_target_property(imports ${target} MAUD_IMPORTS)
+    get_target_property(interface_imports ${target} MAUD_INTERFACE_IMPORTS)
     if(NOT imports)
       set(imports "")
     endif()
@@ -741,17 +777,15 @@ function(_maud_finalize_targets)
 
     # Link targets to imported modules
     list(FILTER imports EXCLUDE REGEX ":")
+    list(FILTER interface_imports EXCLUDE REGEX ":")
     foreach(import ${imports})
-      if(import STREQUAL "executable" OR import STREQUAL "test_")
-        continue()
+      if(NOT import MATCHES "^(${target}|executable|test_)$")
+        if(import IN_LIST interface_imports)
+          _maud_finalize_import(${target} PUBLIC ${import})
+        else()
+          _maud_finalize_import(${target} PRIVATE ${import})
+        endif()
       endif()
-      if(NOT TARGET ${import})
-        find_package("${import}.maud" REQUIRED CONFIG)
-      endif()
-      if(import STREQUAL target) # for example a partition might import the primary
-        continue()
-      endif()
-      target_link_libraries(${target} PRIVATE ${import})
     endforeach()
 
     get_target_property(interface ${target} MAUD_INTERFACE)
@@ -823,11 +857,13 @@ function(_maud_finalize_targets)
       FILE_SET module_providers
       DESTINATION "${junk_prefix}${install_dir}/module_interface/${target}"
     )
+    if(target_type STREQUAL "EXECUTABLE")
+      continue()
+    endif()
     install(
       EXPORT ${target}
       DESTINATION "${junk_prefix}${CMAKE_INSTALL_LIBDIR}/cmake"
       FILE ${target}.maud-config.cmake
-      # TODO support injecting more cmake into maud-config.cmake
     )
   endforeach()
 

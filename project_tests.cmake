@@ -502,17 +502,66 @@ macro("project test: import installed")
   run(COMMAND cmake --install foo/.build --config Debug --prefix .usr)
 
   write(
-    use/use_foo.cxx
+    bar/bar.cxx
     [[
-      import executable;
+      export module bar;
       import foo;
-      int main() { return foo(); }
+      export int bar() { return foo(); }
+    ]]
+  )
+  run(
+    COMMAND maud --log-level=VERBOSE
+    WORKING_DIRECTORY bar
+  )
+  run(COMMAND cmake --install bar/.build --config Debug --prefix .usr)
+
+  write(
+    baz/baz.cxx
+    [[
+      export module baz;
+      import bar;
+      export int baz() { return bar(); }
+    ]]
+  )
+  # FIXME
+  run(COMMAND maud --log-level=VERBOSE WORKING_DIRECTORY baz)
+endmacro()
+
+
+macro("project test: installed cmake functions")
+  write(
+    foobar/install.cmake
+    [[
+      include(GNUInstallDirs)
+      install(
+        FILES foo-config.cmake
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake"
+      )
+    ]]
+  )
+  write(
+    foobar/foo-config.cmake
+    [[
+      file(WRITE foo.txt FOO)
+    ]]
+  )
+  run(
+    COMMAND maud --log-level=VERBOSE
+    WORKING_DIRECTORY foobar
+  )
+  run(COMMAND cmake --install foobar/.build --config Debug --prefix .usr)
+
+  write(
+    use/use_foo.cmake
+    [[
+      find_package(foo)
     ]]
   )
   run(
     COMMAND maud --log-level=VERBOSE
     WORKING_DIRECTORY use
   )
+  assert([[EXISTS use/foo.txt]])
 endmacro()
 
 
@@ -645,44 +694,6 @@ macro("project test: c++23 project")
       set(CMAKE_CXX_STANDARD 23)
     ]]
   )
-  run(COMMAND maud --log-level=VERBOSE)
-endmacro()
-
-
-macro("project test: use find_package")
-  write(
-    use_fmt.cxx
-    [[
-      #include <fmt/format.h>
-      import executable;
-      int main() {}
-    ]]
-  )
-
-  write(
-    use_fmt.cmake
-    [[
-      find_package(fmt REQUIRED)
-      add_executable(use_fmt)
-      target_link_libraries(
-        use_fmt
-        PRIVATE
-        fmt::fmt-header-only
-      )
-      set(options "-DFMT_HEADER_ONLY=1")
-      get_target_property(i fmt::fmt-header-only INTERFACE_INCLUDE_DIRECTORIES)
-      foreach(d ${i})
-        string(APPEND options " ${CMAKE_INCLUDE_SYSTEM_FLAG_CXX} ${d}")
-      endforeach()
-
-      set_source_files_properties(
-        "${dir}/use_fmt.cxx"
-        PROPERTIES
-        MAUD_PREPROCESSING_SCAN_OPTIONS "${options}"
-      )
-    ]]
-  )
-
   run(COMMAND maud --log-level=VERBOSE)
 endmacro()
 
@@ -1040,7 +1051,7 @@ def setup(app):
 endmacro()
 
 
-macro("DISABLED project test: import installed with options")
+macro("project test: import installed with header dependencies")
   write(
     fmt_42/fmt_42.cxx
     [[
@@ -1056,13 +1067,6 @@ macro("DISABLED project test: import installed with options")
       find_package(fmt REQUIRED)
       add_library(fmt_42)
       target_link_libraries(fmt_42 INTERFACE fmt::fmt)
-      get_target_property(d fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
-      set(options " ${CMAKE_INCLUDE_SYSTEM_FLAG_CXX} ${d} ")
-      set_source_files_properties(
-        "${dir}/fmt_42.cxx"
-        PROPERTIES
-        MAUD_PREPROCESSING_SCAN_OPTIONS "${options}"
-      )
     ]]
   )
   run(COMMAND maud --log-level=VERBOSE WORKING_DIRECTORY fmt_42)
@@ -1077,13 +1081,6 @@ macro("DISABLED project test: import installed with options")
     ]]
   )
   run(COMMAND maud --log-level=VERBOSE WORKING_DIRECTORY use)
-  # This fails because the installed export doesn't include a
-  # call to find_package(fmt):
-  #
-  # CMake Error at /home/ben/maud/tools/.build/_maud/test_projects/usr/lib/cmake/fmt_42.maud-config.cmake:60 (set_target_properties):
-  #  The link interface of target "fmt_42" contains:
-  #
-  #    fmt::fmt
 endmacro()
 
 
