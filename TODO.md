@@ -14,6 +14,7 @@ NEXT
 - more test projects
   - use a maud based project with fetchcontent
   - build man pages and install
+  - install the project test framework
 - improve docs
   - make zero conf docs actually work
   - generate a default full depth toctree and all-target glossary page

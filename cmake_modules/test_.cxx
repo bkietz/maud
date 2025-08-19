@@ -5,8 +5,7 @@ module;
 #include <gtest/gtest.h>
 
 #include <any>
-#include <cstdint>
-#include <exception>
+#include <span>
 #include <sstream>
 #include <vector>
 export module test_;
@@ -46,7 +45,7 @@ concept SizedRange = requires(R range) {
   { range.size() } -> std::same_as<std::size_t>;
 };
 
-std::vector<std::any> parameters;
+std::vector<std::any> parameter_keepalives;
 
 struct Info {
   char const *file;
@@ -99,7 +98,7 @@ struct Registrar {
         [parameter]() -> testing::Test * { return new Fixture{parameter}; });
   }
 
-  void register_range(Info info, auto &&range) {
+  void register_(Info info, auto &&range) {
     std::vector<std::decay_t<decltype(*range.begin())>> vector;
     if constexpr (SizedRange<decltype(range)>) {
       vector.reserve(range.size());
@@ -110,20 +109,12 @@ struct Registrar {
     for (int i = 0; auto const &parameter : vector) {
       register_one(info, &parameter, i++);
     }
-    parameters.emplace_back(std::move(vector));
-  }
-
-  void register_(Info info, auto &&parameters) {
-    if constexpr (std::is_invocable_v<decltype(parameters)>) {
-      register_range(info, std::move(parameters)());
-    } else {
-      register_range(info, std::move(parameters));
-    }
+    parameter_keepalives.emplace_back(std::move(vector));
   }
 
   template <typename T>
-  void register_(Info info, std::initializer_list<T> parameters) {
-    register_range(info, parameters);
+  void register_(Info info, std::initializer_list<T> initializer_list) {
+    register_(info, std::span{initializer_list});
   }
 
   void register_(Info info, auto &&...parameters)
@@ -139,12 +130,12 @@ struct Registrar {
 
   template <typename... T>
   void register_(Info info, std::tuple<T...> tuple) {
-    parameters.emplace_back(std::move(tuple));
+    parameter_keepalives.emplace_back(std::move(tuple));
     std::apply(
         [&, i = 0](auto const &...parameters) mutable {
           (register_one(info, &parameters, i++, type_name<T>), ...);
         },
-        std::any_cast<decltype(tuple) const &>(parameters.back()));
+        std::any_cast<decltype(tuple) const &>(parameter_keepalives.back()));
   }
 };
 

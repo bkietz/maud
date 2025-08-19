@@ -149,6 +149,68 @@ macro("project test: std lib")
 endmacro()
 
 
+macro("project test: broken c++")
+  write(
+    broken.cxx
+    [[
+      export module broken;
+      exp_rt int foo;
+    ]]
+  )
+  run(COMMAND maud --log-level=VERBOSE --generate-only)
+  run(FAILING COMMAND maud --log-level=VERBOSE)
+  return()
+
+  # FIXME this passes but should not; instead of
+  # silently omitting a source file from the build,
+  # generation should fail immediately.
+  write(
+    broken.cxx
+    [[
+      #include <string>
+      export module broken module declaration
+      export int foo;
+    ]]
+  )
+  run(FAILING COMMAND maud --log-level=VERBOSE)
+endmacro()
+
+
+macro("project test: exported trait")
+  write(
+    name_trait.cxx
+    [[
+      export module name_trait;
+      export template <typename> auto constexpr Name = "";
+    ]]
+  )
+
+  write(
+    name_trait.integer.cxx
+    [[
+      export module name_trait.integer;
+      export import name_trait;
+      export template <> auto constexpr Name<int> = "int";
+    ]]
+  )
+
+  write(
+    assertions.cxx
+    [[
+      #include <string_view>
+      import executable;
+      import name_trait.integer;
+      using namespace std::literals;
+      static_assert(Name<void> == ""sv);
+      static_assert(Name<int> == "int"sv);
+      int main() {}
+    ]]
+  )
+
+  run(COMMAND maud --log-level=VERBOSE)
+endmacro()
+
+
 macro("project test: glob benchmark")
   write(
     benchmark.cmake
