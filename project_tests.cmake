@@ -554,7 +554,15 @@ macro("project test: import installed")
     foo/foo.cxx
     [[
       export module foo;
-      export int foo() { return 0; }
+      export int foo();
+    ]]
+  )
+  write(
+    foo/foo_impl.cxx
+    [[
+      // use a module partition so even p1689 scanners find it
+      module foo:impl;
+      int foo() { return 0; }
     ]]
   )
   run(
@@ -562,6 +570,9 @@ macro("project test: import installed")
     WORKING_DIRECTORY foo
   )
   run(COMMAND cmake --install foo/.build --config Debug --prefix .usr)
+  # only module interfaces are installed
+  assert([[EXISTS .usr/lib/module_interface/foo/foo.cxx]])
+  assert([[NOT EXISTS .usr/lib/module_interface/foo/foo_impl.cxx]])
 
   write(
     bar/bar.cxx
@@ -580,13 +591,15 @@ macro("project test: import installed")
   write(
     baz/baz.cxx
     [[
-      export module baz;
+      import executable;
       import bar;
-      export int baz() { return bar(); }
+      int main() { return bar(); }
     ]]
   )
-  # FIXME
   run(COMMAND maud --log-level=VERBOSE WORKING_DIRECTORY baz)
+  run(COMMAND cmake --install baz/.build --config Debug --prefix .usr)
+
+  run(COMMAND baz)
 endmacro()
 
 

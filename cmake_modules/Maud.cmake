@@ -627,10 +627,14 @@ function(_maud_scan source_file)
 
   # attach sources
   if(type STREQUAL "INTERFACE" OR type STREQUAL "PROVIDER")
+    if(type STREQUAL "INTERFACE")
+      set(file_set PUBLIC FILE_SET module_interfaces)
+    else()
+      set(file_set PRIVATE FILE_SET module_providers)
+    endif()
     target_sources(
       ${target_name}
-      PUBLIC
-      FILE_SET module_providers
+      ${file_set}
       TYPE CXX_MODULES
       BASE_DIRS ${_MAUD_BASE_DIRS}
       FILES "${source_file}"
@@ -695,8 +699,7 @@ function(_maud_add_test source_file out_target_name)
   add_test(NAME test_.${name} COMMAND $<TARGET_FILE:test_.${name}> --gtest_brief=1)
   target_sources(
     test_.${name}
-    PUBLIC
-    FILE_SET module_providers
+    PUBLIC FILE_SET module_interfaces
     TYPE CXX_MODULES
     ${_MAUD_BASE_DIRS}
     FILES "${_MAUD_SELF_DIR}/test_.cxx"
@@ -791,24 +794,22 @@ function(_maud_finalize_targets)
     get_target_property(interface ${target} MAUD_INTERFACE)
     if(NOT interface AND NOT TEST ${target})
       if(target_type STREQUAL "EXECUTABLE")
+        set(access PRIVATE)
         set(interface "${_MAUD_SELF_DIR}/executable.cxx")
       else()
-        get_target_property(src ${target} MAUD_INTERFACE_PARTITIONS)
+        set(access PUBLIC)
         set(interface "${MAUD_DIR}/injected/${target}.cxx")
+        message(VERBOSE "  No primary interface supplied, injecting ${interface}")
+
+        get_target_property(src ${target} MAUD_INTERFACE_PARTITIONS)
         list(TRANSFORM src PREPEND "\nexport import :")
         list(PREPEND src "export module ${target}")
-        file(WRITE "${MAUD_DIR}/injected/${target}.cxx" "${src};\n")
-        set_source_files_properties(
-          "${MAUD_DIR}/injected/${target}.cxx"
-          PROPERTIES
-          MAUD_TYPE INTERFACE
-        )
-        message(VERBOSE "  No primary interface supplied, injecting ${interface}")
+        file(WRITE "${interface}" "${src};\n")
+        set_source_files_properties("${interface}" PROPERTIES MAUD_TYPE INTERFACE)
       endif()
       target_sources(
         ${target}
-        PUBLIC
-        FILE_SET module_providers
+        ${access} FILE_SET module_interfaces
         TYPE CXX_MODULES
         ${_MAUD_BASE_DIRS}
         FILES "${interface}"
@@ -828,8 +829,7 @@ function(_maud_finalize_targets)
 
       target_sources(
         ${target}
-        PUBLIC
-        FILE_SET module_providers
+        PUBLIC FILE_SET module_interfaces
         TYPE CXX_MODULES
         BASE_DIRS ${_MAUD_BASE_DIRS}
         FILES "${test_main}"
@@ -837,32 +837,34 @@ function(_maud_finalize_targets)
       continue()
     endif()
 
-    set(is_exe $<STREQUAL:$<TARGET_PROPERTY:${target},TYPE>,EXECUTABLE>)
-    set(
-      install_dir
-      "$<IF:${is_exe},${CMAKE_INSTALL_BINDIR},${CMAKE_INSTALL_LIBDIR}>"
-    )
     if(target MATCHES _$)
-      set(junk_prefix "${MAUD_DIR}/junk/")
-    else()
-      set(junk_prefix "")
+      continue()
     endif()
 
+    if(target_type STREQUAL "EXECUTABLE")
+      install(
+        TARGETS ${target}
+        EXPORT ${target}
+        DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        CXX_MODULES_BMI
+        DESTINATION "${MAUD_DIR}/junk/${target}"
+      )
+      continue()
+    endif()
+
+    set(module_dir "${CMAKE_INSTALL_LIBDIR}/module_interface/${target}")
     install(
       TARGETS ${target}
       EXPORT ${target}
-      DESTINATION "${junk_prefix}${install_dir}"
+      DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+      FILE_SET module_interfaces
+      DESTINATION "${module_dir}"
       CXX_MODULES_BMI
-      DESTINATION "${junk_prefix}${install_dir}/bmi/${CMAKE_CXX_COMPILER_ID}"
-      FILE_SET module_providers
-      DESTINATION "${junk_prefix}${install_dir}/module_interface/${target}"
+      DESTINATION "${module_dir}/${CMAKE_CXX_COMPILER_ID}.bmi"
     )
-    if(target_type STREQUAL "EXECUTABLE")
-      continue()
-    endif()
     install(
       EXPORT ${target}
-      DESTINATION "${junk_prefix}${CMAKE_INSTALL_LIBDIR}/cmake"
+      DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake"
       FILE ${target}.maud-config.cmake
     )
   endforeach()
