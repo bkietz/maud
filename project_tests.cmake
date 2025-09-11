@@ -1159,6 +1159,30 @@ macro("project test: import installed with header dependencies")
 endmacro()
 
 
+macro("project test: conflicting names")
+  write(foo.cxx [[ export module foo; export constexpr int V = 0; ]])
+  write(bar.cxx [[ export module bar; export constexpr int V = 1; ]])
+  write(quux.cxx [[ export module quux; import foo; import bar; ]])
+  run(FAILING COMMAND maud --log-level=VERBOSE)
+endmacro()
+
+
+macro("project test: circular import")
+  write(foo.cxx [[ export module foo; import bar; ]])
+  write(bar.cxx [[ export module bar; import foo; ]])
+  run(FAILING COMMAND maud --log-level=VERBOSE)
+
+  # Some build systems would probably allow a circular import
+  # that did not include interface units. However, maud cannot
+  # because that would imply circular library linkage..
+  write(foo.cxx [[ export module foo; ]])
+  write(bar.cxx [[ export module bar; ]])
+  write(foo_impl.cxx [[ module foo:impl; import bar; ]])
+  write(bar_impl.cxx [[ module bar:impl; import foo; ]])
+  run(FAILING COMMAND maud --log-level=VERBOSE)
+endmacro()
+
+
 ###########################################################
 
 
