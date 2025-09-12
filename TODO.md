@@ -78,8 +78,8 @@ default we don't run the tests or install (but they logically belong
 to that same singular flow).
 
 
-TODO: document how to do optional dependencies
-----------------------------------------------
+TODO: document how to do optional dependencies and exports
+----------------------------------------------------------
 
 How do we deal with optional dependencies? If there is an
 option named `YAML_ENABLED` and we switch it off, then we
@@ -100,6 +100,10 @@ I guess we just have to assume that if any configuration would
 import a dependency then it must be available for linking to any
 configuration. In the example above, the import will still be
 linked in release but not used.
+
+`export`ed declarations might also be conditionally available.
+That's easier; there's no reason not to handle that with the
+preprocessor.
 
 
 TODO: allow deferring past the cmake_modules stage

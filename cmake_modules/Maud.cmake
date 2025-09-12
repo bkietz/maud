@@ -331,6 +331,7 @@ function(_maud_write_scan_script)
   list(JOIN flags " " flags)
   string(PREPEND flags " `cat <OBJECT>.flags` ")
   string(PREPEND flags " ${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION} ")
+  string(PREPEND flags " ${_MAUD_INCLUDE} \"${MAUD_DIR}/options.h\"")
   string(REPLACE "SHELL:" "" flags "${flags}")
 
   if(MSVC)
@@ -837,6 +838,11 @@ function(_maud_finalize_targets)
       continue()
     endif()
 
+    target_compile_options(
+      ${target} PRIVATE
+      "$<BUILD_INTERFACE:${_MAUD_INCLUDE} \"${MAUD_DIR}/options.h\">"
+    )
+
     if(target MATCHES _$)
       continue()
     endif()
@@ -853,6 +859,7 @@ function(_maud_finalize_targets)
     endif()
 
     set(module_dir "${CMAKE_INSTALL_LIBDIR}/module_interface/${target}")
+
     install(
       TARGETS ${target}
       EXPORT ${target}
@@ -862,6 +869,11 @@ function(_maud_finalize_targets)
       CXX_MODULES_BMI
       DESTINATION "${module_dir}/${CMAKE_CXX_COMPILER_ID}.bmi"
     )
+
+    set(installed_options "${_MAUD_INCLUDE} \"\${_IMPORT_PREFIX}/${module_dir}/options.h\"")
+    target_compile_options(${target} PRIVATE "$<INSTALL_INTERFACE:${installed_options}>")
+    install(FILES "${MAUD_DIR}/options.h" DESTINATION "${module_dir}")
+
     install(
       EXPORT ${target}
       DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake"
@@ -1168,7 +1180,6 @@ function(_maud_setup)
 
   file(MAKE_DIRECTORY "${MAUD_DIR}/junk" "${MAUD_DIR}/rendered")
   file(WRITE "${MAUD_DIR}/options.h" "")
-  add_compile_options("${_MAUD_INCLUDE} \"${MAUD_DIR}/options.h\"")
 
   cmake_path(IS_PREFIX CMAKE_SOURCE_DIR "${CMAKE_BINARY_DIR}" is_prefix)
   cmake_path(GET CMAKE_BINARY_DIR FILENAME build)

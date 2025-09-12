@@ -574,6 +574,9 @@ macro("project test: import installed")
   assert([[EXISTS .usr/lib/module_interface/foo/foo.cxx]])
   assert([[NOT EXISTS .usr/lib/module_interface/foo/foo_impl.cxx]])
 
+  # delete foo's directory to assert we don't depend on it
+  run(COMMAND cmake -E rm -R foo)
+
   write(
     bar/bar.cxx
     [[
@@ -588,6 +591,9 @@ macro("project test: import installed")
   )
   run(COMMAND cmake --install bar/.build --config Debug --prefix .usr)
 
+  # delete bar's directory to assert we don't depend on it
+  run(COMMAND cmake -E rm -R bar)
+
   write(
     baz/baz.cxx
     [[
@@ -599,7 +605,51 @@ macro("project test: import installed")
   run(COMMAND maud --log-level=VERBOSE WORKING_DIRECTORY baz)
   run(COMMAND cmake --install baz/.build --config Debug --prefix .usr)
 
+  # delete baz's directory to assert we don't depend on it
+  run(COMMAND cmake -E rm -R baz)
+
   run(COMMAND baz)
+endmacro()
+
+
+macro("project test: installed options")
+  write(
+    foo/options.cmake
+    [[ option(ALPHA ENUM 67 "" ADD_COMPILE_DEFINITIONS) ]]
+  )
+  write(
+    foo/foo.cxx
+    [[
+      export module foo;
+      static_assert(ALPHA_67);
+      export constexpr int FOO_ALPHA = 67;
+    ]]
+  )
+  run(COMMAND maud WORKING_DIRECTORY foo)
+  run(COMMAND cmake --install foo/.build --config Debug --prefix .usr)
+
+  # delete foo's directory to assert we don't depend on it
+  run(COMMAND cmake -E rm -R foo)
+
+  write(
+    bar/options.cmake
+    [[ option(ALPHA ENUM A B C "" ADD_COMPILE_DEFINITIONS) ]]
+  )
+  write(
+    bar/bar.cxx
+    [[
+      export module bar;
+      import foo;
+
+      static_assert(ALPHA_A);
+      static_assert(FOO_ALPHA == 67);
+
+      #if defined(ALPHA_67)
+      #error "Pre-processor contamination from foo!"
+      #endif
+    ]]
+  )
+  run(COMMAND maud WORKING_DIRECTORY bar)
 endmacro()
 
 
