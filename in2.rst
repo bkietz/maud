@@ -91,7 +91,7 @@ by ``|``.
   bool foo_enabled = 1;
 
 The pipeline's value is initialized from the referenced variable and
-is stores in the variable ``${IT}``. Each pipeline filter is a cmake
+is stored in the variable ``${IT}``. Each pipeline filter is a cmake
 command which reads and then overwrites ``${IT}``. After all filters
 have been applied, the final value of ``${IT}`` is rendered.
 

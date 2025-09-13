@@ -73,13 +73,6 @@ Declare an option with the provided ``name``.
       instead of the default. (This can be disabled by setting
       ``ENV{MAUD_DISABLE_ENVIRONMENT_OPTIONS} = ON``.)
 
-    .. note::
-
-      ``CACHE`` variables' values may be defined before their declaration as an
-      option (for example if the option is defined on the command line via
-      ``-DFOO_LEVEL=HI``) in which case the declaration will initialize other
-      properties, leaving the value unchanged.
-
     .. list-table:: Implicit defaults
 
       * - ``BOOL``
@@ -89,7 +82,7 @@ Declare an option with the provided ``name``.
       * - ``STRING``
         - ``""``
       * - ``ENUM``
-        - the first enum value
+        - the enum's first member
 
 ``MARK_AS_ADVANCED``
     Mark this ``CACHE`` variable :cmake:`advanced <prop_cache/ADVANCED.html>`.
@@ -266,7 +259,7 @@ Options are considered to form a directed acyclic graph: each option may
 declare a requirement on any other option as long as no cycles are formed.
 Options with no requirements placed on them will have their default or
 user configured value. Otherwise requirements determine the option's value
-(even if the dependency's default is required).
+(even if the value required happens to be a the dependency's default).
 
 .. tab:: ✅ Valid
 

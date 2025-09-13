@@ -72,11 +72,11 @@ part of the cmake configure step and their imports and exports enumerated.
     libraries, but require those not be installed.
 
 Executables are generated from each source which imports the special
-module ``executable``. The executable's name the
+module ``executable``. The executable's name is the
 :cmake:`STEM <command/cmake_path.html#decomposition>`
 (source file name, stripped of all extensions).
 
-:ref:`testing` are generated from sources which import the special
+:ref:`Tests <testing>` are generated from sources which import the special
 module ``test_``.
 
 Executables and tests can both be implementation units of a module.

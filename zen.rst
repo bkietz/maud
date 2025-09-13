@@ -14,16 +14,3 @@ Zen
   We might need to overwrite cpp:namespace in order to support extended namespace spelling
   .. cpp:namespace:: Parameter : c4::yml::ConstNodeRef
 
-.. cpp:module:: maud_
-
-.. trike-struct:: Parameter : c4::yml::ConstNodeRef
-  :members:
-
-  FIXME remove this when I figure out how to test sphinx better
-
-
-FIXME where should this live
-
-Directories named ``include`` are globbed up and added to ``INCLUDE_DIRECTORIES``,
-so ``$project_root/subtool/include/subtool/foo.hxx`` can be included with
-``#include "subtool/foo.hxx"`` from any header or source.
