@@ -169,14 +169,6 @@ Built-in globs
     These files will be :ref:`tested for consistent formatting <formatting-test>`
     using ``clang-format``.
 
-``MAUD_DOCUMENTATION_SOURCES``
-    By default, this includes all files with any extension in
-    ``.rst .myst .md``, excluding those whose ``STEM`` is spelled
-    in SHOUTY_SNAKE_CASE (to avoid building documentation from
-    ``README.md`` when not explicitly included).
-
-    These will be passed to Sphinx and used to build :ref:`documentation`.
-
 To override any of these, call :ref:`glob() <glob-function>`
 to set the ``CACHE`` variable before it is required by ``Maud``.
 For example to scan only ``src/**.ixx`` files, write
@@ -197,5 +189,5 @@ and all globs exclude directories and files whose names start with ``.``
 If a non-default build directory name is used or the globs are adjusted from
 their defaults, then the user must ensure build files are still excluded from
 globs. I recommend upholding the convention by naming build
-directories ``.$name`` and excluding ``.$name`` from globs with ``!(/|^)[.]``.
+directories ``.$name``.
 

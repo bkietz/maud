@@ -5,6 +5,7 @@ Zen
 - Do not require specification of targets; infer these from exported modules.
 - Do not require finding/linking to libraries; infer these from imported modules.
 - Do not require install manifests; generate and install what's necessary.
+- Do not hinder documentation; keep it *easier* than writing in forgettable places. 
 - Do not lock authors into learning maud equivalents for what's already
   available in cmake; reverting to configuration is easy.
 - Do not promise dependency management; there is no single best answer to this

@@ -1,7 +1,7 @@
-.. image:: trike.png
+.. image:: /cmake_modules/trike/trike.png
   :class: only-light
 
-.. image:: trike-dark.png
+.. image:: /cmake_modules/trike/trike-dark.png
   :class: only-dark
 
 Trike
@@ -214,3 +214,6 @@ instead of a single list:
       A tool for extracting documentation from C++ source;
       similar to Doxygen, but powered by clang's LibTooling.
       Still in development.
+
+.. I remember seeing a project that had the same basic idea using
+   tree-sitter to parse c++ but I can't find it now

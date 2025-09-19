@@ -18,18 +18,3 @@ def read_cache(build_dir: str, cache):
 
             setattr(cache, name, value)
 
-
-def setup(app):
-    app.add_config_value(
-        name="maud",
-        description="the Maud CMake adapter",
-        default=__import__(__name__),
-        rebuild="",
-    )
-
-    return {
-        "version": "0.1",
-        "parallel_read_safe": True,
-        "parallel_write_safe": True,
-    }
-

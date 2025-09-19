@@ -983,7 +983,7 @@ function(_maud_maybe_regenerate)
     cmake_path(REMOVE_EXTENSION obj_path LAST_ONLY OUTPUT_VARIABLE ddi_stem)
     string(APPEND input "${source_file};${ddi_stem}\n")
   endforeach()
-  
+
   file(WRITE "${MAUD_DIR}/rescan_input.list" "${input}")
   execute_process(
     COMMAND "${MAUD_DIR}/scan" "${MAUD_DIR}/rescan_input.list" .new
@@ -1350,27 +1350,6 @@ function(_maud_setup_doc)
     return()
   endif()
 
-  # TODO document that conf can't be generated
-  glob(
-    _MAUD_SPHINX_CONF
-    CONFIGURE_DEPENDS
-    EXCLUDE_RENDERED
-    "(^|/)sphinx_configuration/conf.py$"
-  )
-  if(NOT _MAUD_SPHINX_CONF)
-    message(VERBOSE "Could not find sphinx_configuration/conf.py, abandoning doc")
-    # TODO fall back to default_sphinx_configuration
-    # TODO provide TARGET fix.generate_sphinx_configuration which dumps the default
-    return()
-  elseif(_MAUD_SPHINX_CONF MATCHES ";")
-    message(
-      FATAL_ERROR
-      "Sphinx requires a single sphinx_configuration/conf.py, "
-      "but found '${_MAUD_SPHINX_CONF}'"
-    )
-  endif()
-  cmake_path(GET _MAUD_SPHINX_CONF PARENT_PATH conf_dir)
-
   find_package(Python3)
   if(NOT TARGET Python3::Interpreter)
     # TODO instead, error here (but include instructions to disable doc)
@@ -1379,10 +1358,37 @@ function(_maud_setup_doc)
   endif()
 
   set(doc "${CMAKE_BINARY_DIR}/documentation")
-  file(MAKE_DIRECTORY "${doc}/stage")
+
+  if(DEFINED MAUD_DOCUMENTATION_DIR)
+    set(src "${MAUD_DOCUMENTATION_DIR}")
+  else()
+    set(src "${CMAKE_SOURCE_DIR}")
+  endif()
+  _maud_set(MAUD_DOCUMENTATION_DIR "${src}")
+
+  if(EXISTS "${src}/sphinx_configuration/conf.py")
+    set(conf "${src}/sphinx_configuration")
+  elseif(EXISTS "${src}/conf.py")
+    set(conf "${src}")
+  else()
+    set(conf "${doc}/default_sphinx_configuration")
+    file(
+      WRITE "${conf}/conf.py"
+      "from maud.default_sphinx_configuration import *\n"
+    )
+  endif()
+  # TODO provide TARGET fix.generate_sphinx_configuration which dumps the default
+
+  if(EXISTS "${conf}/requirements.txt")
+    set(requirements "${conf}/requirements.txt")
+  else()
+    set(requirements "${_MAUD_SELF_DIR}/default_sphinx_requirements.txt")
+  endif()
+
+  set(adapter "${MAUD_DIR}/sphinx_adapter/maud")
 
   file(
-    WRITE "${MAUD_DIR}/maud_sphinx_adapter/pyproject.toml"
+    WRITE "${adapter}/../pyproject.toml"
     [[
       [build-system]
       requires = ["setuptools"]
@@ -1393,15 +1399,19 @@ function(_maud_setup_doc)
       dependencies = []
     ]]
   )
-  file(WRITE "${MAUD_DIR}/maud_sphinx_adapter/maud/cache/__init__.py")
   file(
-    WRITE "${MAUD_DIR}/maud_sphinx_adapter/maud/__init__.py"
+    WRITE "${adapter}/__init__.py"
     "import sys\n"
     "sys.path.append('${_MAUD_SELF_DIR}')\n"
-    "from _maud_sphinx_adapter import setup, read_cache\n"
-    "sys.path = sys.path[:-1]\n"
+    "from _maud_sphinx_adapter import read_cache\n"
+    "sys.path.pop()\n"
     "import maud.cache\n"
     "read_cache('${CMAKE_BINARY_DIR}', maud.cache)\n"
+  )
+  file(WRITE "${adapter}/cache/__init__.py")
+  file(
+    COPY "${_MAUD_SELF_DIR}/default_sphinx_configuration.py"
+    DESTINATION "${adapter}"
   )
 
   execute_process(COMMAND "${Python3_EXECUTABLE}" -m venv "${doc}/venv")
@@ -1414,24 +1424,23 @@ function(_maud_setup_doc)
   add_custom_command(
     COMMENT "Building virtual env ${doc}/venv for Sphinx"
     OUTPUT "${sphinx}"
-    DEPENDS "${_MAUD_SELF_DIR}/sphinx_requirements.txt"
+    DEPENDS
+      "${requirements}"
+      "${_MAUD_SELF_DIR}/default_sphinx_configuration.py"
     COMMAND
       "${pip}" install
-      --editable "${MAUD_DIR}/maud_sphinx_adapter"
+      --editable "${adapter}/.."
       --editable "${_MAUD_SELF_DIR}/trike"
-      --requirement "${_MAUD_SELF_DIR}/sphinx_requirements.txt"
+      --requirement "${requirements}"
       --isolated
       --require-virtualenv
-      #--ignore-installed
+      --ignore-installed
       --disable-pip-version-check
       --no-input
       --quiet
       --log "${doc}/venv/pip.log"
       --report "${doc}/venv/pip.report.json"
   )
-
-  add_custom_target(documentation)
-  # FIXME maud should make use of Sphinx.env.note_dependency()
 
   # We run sphinx multithreaded. This can pessimize throughput since ninja
   # is probably *also* running `nproc` tasks. If this becomes a problem later,
@@ -1440,21 +1449,24 @@ function(_maud_setup_doc)
   # manpages and html at the same time.
   set_property(GLOBAL APPEND PROPERTY JOB_POOLS sphinx_build=1)
 
+  add_custom_target(documentation)
   foreach(builder ${SPHINX_BUILDERS})
     add_custom_target(
       documentation.${builder}
       COMMENT "Building ${builder} with sphinx"
-      DEPENDS "${sphinx}"
-      WORKING_DIRECTORY "${doc}"
+      DEPENDS
+        "${sphinx}"
+        "${conf}/conf.py"
       COMMAND
         "${sphinx}"
         --builder ${builder}
-        --conf-dir "${conf_dir}"
+        --conf-dir "${conf}"
         --doctree-dir doctrees
         --jobs auto
-        stage       # source directory
-        ${builder}  # each builder gets its own out directory
+        "${src}"
+        ${builder}  # each builder gets its own build directory
         > ${builder}.log
+      WORKING_DIRECTORY "${doc}"
       JOB_POOL sphinx_build
     )
     add_dependencies(documentation documentation.${builder})

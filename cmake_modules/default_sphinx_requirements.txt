@@ -32,4 +32,9 @@ sphinxcontrib-qthelp==1.0.7
 sphinxcontrib-serializinghtml==1.1.10
 sphinxcontrib-websupport==1.2.7
 urllib3==2.2.2
-pytest # FIXME Make sure this does not appear in the final defaults
+GitPython==3.1.45
+
+pytest
+# FIXME Make sure this does not appear in the final defaults
+# instead have tests.cmake pip install pytest
+# TODO also upgrade & refreeze

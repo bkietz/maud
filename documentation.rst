@@ -46,6 +46,24 @@ named ``sphinx_configuration/`` anywhere in your project. In a Maud project
 
 .. TODO talk about requirements.txt, venv, ...
 
+..
+  - src root = DOC_DIR, which defaults to the project root dir
+  - The more classic structure for documentation in a software project
+    is a dedicated directory to keep those files neatly away from the
+    Real Code; as though it were a distinct, lesser module. Instead
+    I'd like to see documentation written alongside every piece of code
+    we write, an integral part of the project. In any case, I have never
+    seen a project which wasn't littered with markdown files and other
+    informal doc... most of it difficult to promote into official doc
+    because it was in a different format or in the wrong directory or
+    ... I hope Maud makes it easy enough to write Real Doc that I can
+    break my habit of writing Miscellaneous Doc in irredeemable places.
+  - if you need docs in their own dir or you need generated docs (and
+    can't write a sphinx extension instead), set a different doc dir
+    - for generated doc sphinx should stage its own sources; conf runs
+      before sphinx reads index.rst
+
+
 
 API doc
 =======

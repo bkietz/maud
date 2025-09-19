@@ -112,7 +112,7 @@ Features
 
 .. _generated files blurb:
 
-Built-in support for generated files
+First class support for generated files
     A common source of cmake boilerplate is wiring up rendering of template files,
     running schema compilers, and otherwise generating code. ``Maud`` provides a
     single build subdirectory for these files to land in and natively supports
