@@ -1387,6 +1387,7 @@ function(_maud_setup_doc)
 
   set(adapter "${MAUD_DIR}/sphinx_adapter/maud")
 
+  file(WRITE "${adapter}/__init__.py")
   file(
     WRITE "${adapter}/../pyproject.toml"
     [[
@@ -1400,17 +1401,9 @@ function(_maud_setup_doc)
     ]]
   )
   file(
-    WRITE "${adapter}/__init__.py"
-    "import sys\n"
-    "sys.path.append('${_MAUD_SELF_DIR}')\n"
-    "from _maud_sphinx_adapter import read_cache\n"
-    "sys.path.pop()\n"
-    "import maud.cache\n"
-    "read_cache('${CMAKE_BINARY_DIR}', maud.cache)\n"
-  )
-  file(WRITE "${adapter}/cache/__init__.py")
-  file(
-    COPY "${_MAUD_SELF_DIR}/default_sphinx_configuration.py"
+    COPY
+      "${_MAUD_SELF_DIR}/cache.py"
+      "${_MAUD_SELF_DIR}/default_sphinx_configuration.py"
     DESTINATION "${adapter}"
   )
 
@@ -1424,9 +1417,7 @@ function(_maud_setup_doc)
   add_custom_command(
     COMMENT "Building virtual env ${doc}/venv for Sphinx"
     OUTPUT "${sphinx}"
-    DEPENDS
-      "${requirements}"
-      "${_MAUD_SELF_DIR}/default_sphinx_configuration.py"
+    DEPENDS "${requirements}"
     COMMAND
       "${pip}" install
       --editable "${adapter}/.."

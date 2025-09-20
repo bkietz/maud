@@ -6,7 +6,7 @@ Options
 Options are CMake ``CACHE`` variables which parameterize a project,
 augmented for :ref:`presentation to users <options-summary>` and
 :ref:`consistency checking <option-resolution>`.
-If an aspect of your project might need to be tuned by users, an
+If an aspect of your project needs to be easily tunable by users, an
 option declaration is probably the most accessible way to expose it.
 
 ``option``

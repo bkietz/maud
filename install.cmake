@@ -13,8 +13,9 @@ install(
   "${dir}/cmake_modules/test_.cxx"
   "${dir}/cmake_modules/test_.hxx"
   "${dir}/cmake_modules/test_main_.cxx"
-  "${dir}/cmake_modules/_maud_sphinx_adapter.py"
-  "${dir}/cmake_modules/sphinx_requirements.txt"
+  "${dir}/cmake_modules/cache.py"
+  "${dir}/cmake_modules/default_sphinx_configuration.py"
+  "${dir}/cmake_modules/default_sphinx_requirements.txt"
   DESTINATION
   "${CMAKE_INSTALL_LIBDIR}/cmake/Maud"
 )

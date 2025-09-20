@@ -1,14 +1,22 @@
-from pathlib import Path
-from git import Repo
-
-import maud
 import re
+from pathlib import Path
+from typing import Tuple
+
+import maud.cache
 import pygments.lexers.c_cpp
 import sphinx.highlighting
+from git import Commit, Remote, Repo
+from sphinx.application import Sphinx
+from sphinx.config import Config
+from sphinx.util.logging import getLogger
+from sphinx.util.typing import ExtensionMetadata
+
+logger = getLogger(__name__)
 
 project = maud.cache.PROJECT_NAME
 html_title = maud.cache.PROJECT_NAME
 
+primary_domain = "cpp"
 extensions = []
 exclude_patterns = ["Thumbs.db", ".*", "**/[A-Z_][A-Z_][A-Z_][A-Z_]*"]
 source_suffix = {
@@ -16,7 +24,7 @@ source_suffix = {
 }
 
 
-def _trunk(remote):
+def _trunk(remote: Remote) -> str:
     head = remote.refs["HEAD"]
     for trunk in {*remote.refs} - {head}:
         if trunk.commit == head.commit:
@@ -24,64 +32,84 @@ def _trunk(remote):
     return ""
 
 
-def _forge(origin):
-    if match := re.match(r"(git@|https://)(github|github)\.com[:/](.+)\.git", origin):
+def _forge(origin_url: str) -> Tuple[str, str, str]:
+    if match := re.match(
+        r"(git@|https://)(github|github)\.com[:/](.+)\.git", origin_url
+    ):
         _, name, repo = match.groups()
         url = f"https://{name}.com/{repo}"
         icon = f"https://icons.getbootstrap.com/assets/icons/{name}.svg"
         return name, url, icon
 
-    return None, None, None
+    return "", "", ""
 
 
-def _infer_options():
-    path = Path(maud.cache.CMAKE_SOURCE_DIR)
-    repo = Repo(path, search_parent_directories=True)
+try:
+    srcdir = Path(maud.cache.MAUD_DOCUMENTATION_DIR)
 
-    trunks = {_trunk(r) for r in repo.remotes} - {""}
-    trunk = trunks.pop() if len(trunks) == 1 else ""
+    repo = Repo(srcdir, search_parent_directories=True)
+    assert repo.working_tree_dir, "no bare repos"
+    working_tree_dir = Path(repo.working_tree_dir)
 
-    try:
-        origin_name = repo.branches[trunk].tracking_branch().remote_name
-        origin = repo.remotes[origin_name].url
-    except Exception:
-        origin = ""
+    _trunks = {_trunk(r) for r in repo.remotes} - {""}
+    trunk = _trunks.pop() if len(_trunks) == 1 else ""
+
+    origin = ""
+    if trunk in repo.branches:
+        if remote_trunk := repo.branches[trunk].tracking_branch():
+            origin_name = remote_trunk.remote_name
+            origin = repo.remotes[origin_name].url
 
     forge, forge_url, forge_icon = _forge(origin)
 
-    options = {
+    html_theme_options = {
         "footer_icons": [],
         "navigation_with_keys": True,
     }
 
-    if not forge:
-        return options
+    if forge:
+        html_theme_options.update(
+            footer_icons=[
+                {
+                    "name": forge,
+                    "url": forge_url,
+                    "html": f'<img loading="lazy" src="{forge_icon}" {style} />',
+                    "class": cls,
+                }
+                for cls, style in {
+                    "only-light": "",
+                    "only-dark": 'style="filter: invert(100%);"',
+                }.items()
+            ],
+            top_of_page_buttons=["view", "edit"],
+            source_repository=forge_url,
+            source_branch=trunk,
+            source_directory=srcdir.relative_to(working_tree_dir).name,
+        )
 
-    options.update(
-        footer_icons=[
-            {
-                "name": forge,
-                "url": forge_url,
-                "html": f'<img loading="lazy" src="{forge_icon}" {style} />',
-                "class": cls,
-            }
-            for cls, style in {
-                "only-light": "",
-                "only-dark": 'style="filter: invert(100%);"',
-            }.items()
-        ],
-        top_of_page_buttons=["view", "edit"],
-        source_repository=forge_url,
-        source_branch=trunk,
-        source_directory=path.relative_to(Path(repo.working_tree_dir)).name,
+    def first_commit_to(path: Path) -> Commit | None:
+        assert repo is not None
+        path = path.relative_to(working_tree_dir)
+        if commits := [*Commit.iter_items(repo, trunk, path)]:
+            return commits.pop()
+
+    def set_from_git(app: Sphinx, config: Config):
+        root_doc = app.srcdir / config.root_doc
+        for ext in config.source_suffix.keys():
+            first = first_commit_to(root_doc.with_suffix(ext))
+            if first and first.author and first.author.name:
+                config.author = first.author.name
+                config.copyright = f"{first.authored_datetime.year}, {config.author}"
+
+
+except Exception as e:
+    logger.error(
+        f"Exception while inferring options from git: {e}", extra={"Exception": e}
     )
-
-    # TODO infer author from the first committer to root_doc
-    return options
+    repo = None
 
 
 html_theme = "furo"
-html_theme_options = _infer_options()
 
 pygments_style = "default"
 pygments_dark_style = "monokai"
@@ -123,7 +151,13 @@ def trike_get_uri(file, line):
     return f"https://github.com/bkietz/maud/blob/trunk/{relative}#L{line}"
 
 
-def setup(app):
+def setup(app: Sphinx) -> ExtensionMetadata:
+    app.connect(
+        "config-inited",
+        set_from_git,
+        priority=1000,  # after convert_highlight_options
+    )
+
     sphinx.highlighting.lexers["c++.in2"] = pygments.lexers.c_cpp.CppLexer()
     # def lexer(*args, **kwargs):
     #     print(args, kwargs)
@@ -131,3 +165,9 @@ def setup(app):
     # app.add_lexer("c++.in2", lexer)
     # TODO make a utility for building in2 lexers and embed cmake's syntax
     # http://pygments.org/docs/lexerdevelopment/#using-multiple-lexers
+    return {
+        "version": "0.1",
+        "env_version": 1,
+        "parallel_read_safe": True,
+        "parallel_write_safe": True,
+    }
