@@ -152,11 +152,12 @@ def trike_get_uri(file, line):
 
 
 def setup(app: Sphinx) -> ExtensionMetadata:
-    app.connect(
-        "config-inited",
-        set_from_git,
-        priority=1000,  # after convert_highlight_options
-    )
+    if repo is not None:
+        app.connect(
+            "config-inited",
+            set_from_git,
+            priority=1000,  # after convert_highlight_options
+        )
 
     sphinx.highlighting.lexers["c++.in2"] = pygments.lexers.c_cpp.CppLexer()
     # def lexer(*args, **kwargs):
