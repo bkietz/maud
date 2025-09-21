@@ -11,7 +11,7 @@ from sphinx.config import Config
 from sphinx.util.logging import getLogger
 from sphinx.util.typing import ExtensionMetadata
 
-logger = getLogger(__name__)
+_logger = getLogger(__name__)
 
 project = maud.cache.PROJECT_NAME
 html_title = maud.cache.PROJECT_NAME
@@ -25,6 +25,8 @@ source_suffix = {
 
 
 def _trunk(remote: Remote) -> str:
+    # FIXME fetch should not be necessary here
+    remote.fetch()
     head = remote.refs["HEAD"]
     for trunk in {*remote.refs} - {head}:
         if trunk.commit == head.commit:
@@ -56,9 +58,8 @@ try:
 
     origin = ""
     if trunk in repo.branches:
-        if remote_trunk := repo.branches[trunk].tracking_branch():
-            origin_name = remote_trunk.remote_name
-            origin = repo.remotes[origin_name].url
+        if trunk_on_remote := repo.branches[trunk].tracking_branch():
+            origin = repo.remotes[trunk_on_remote.remote_name].url
 
     forge, forge_url, forge_icon = _forge(origin)
 
@@ -98,12 +99,15 @@ try:
         for ext in config.source_suffix.keys():
             first = first_commit_to(root_doc.with_suffix(ext))
             if first and first.author and first.author.name:
-                config.author = first.author.name
-                config.copyright = f"{first.authored_datetime.year}, {config.author}"
+                if config.author == "Author name not set":
+                    config.author = first.author.name
+                if config.copyright == "":
+                    year = first.authored_datetime.year
+                    config.copyright = f"{year}, {config.author}"
 
 
 except Exception as e:
-    logger.error(
+    _logger.error(
         f"Exception while inferring options from git: {e}", extra={"Exception": e}
     )
     repo = None
