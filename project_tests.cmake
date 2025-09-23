@@ -1124,10 +1124,7 @@ macro("project test: documentation")
   write(
     options.cmake
     [[
-      option(
-        SOME_DOC_OPTION
-        ENUM A B C "Some documentation option"
-      )
+      option(DOCUMENT_EXPERIMENTAL BOOL "")
     ]]
   )
   write(
@@ -1136,21 +1133,15 @@ macro("project test: documentation")
 Weeeeee
 =======
 
-.. trike-put:: cpp:struct Foo
-]]
-  )
-  write(
-    sphinx_configuration/conf.py
-[[
-from maud.cache import SOME_DOC_OPTION, BUILD_TESTING, CMAKE_SOURCE_DIR
-extensions = ['maud', 'trike']
-assert SOME_DOC_OPTION == 'B'
-assert type(BUILD_TESTING) == bool
-exclude_patterns = ["CMAKE_SOURCE_DIR", "Thumbs.db", ".DS_Store"]
-trike_files = list(CMAKE_SOURCE_DIR.glob("*.hxx"))
-from pathlib import Path
-def setup(app):
-    app.srcdir = CMAKE_SOURCE_DIR
+.. trike-struct:: Foo
+
+.. ifconfig:: maud.cache.DOCUMENT_EXPERIMENTAL
+
+  Sometimes there are experiments
+
+.. ifconfig:: not maud.cache.DOCUMENT_EXPERIMENTAL
+
+  Mostly things are stable
 ]]
   )
 
@@ -1167,12 +1158,14 @@ def setup(app):
       };
     ]]
   )
-  run(COMMAND maud -DSOME_DOC_OPTION=B)
+  run(COMMAND maud -DDOCUMENT_EXPERIMENTAL=OFF --generate-only)
   run(COMMAND cmake --build .build --target documentation)
   assert([[EXISTS .build/documentation/dirhtml/index.html]])
   file(READ .build/documentation/dirhtml/index.html index)
   assert([[index MATCHES "Weeeeee"]])
   assert([[index MATCHES "a simple foobar struct"]])
+  assert([[NOT index MATCHES "Sometimes there are experiments"]])
+  assert([[index MATCHES "Mostly things are stable"]])
 endmacro()
 
 

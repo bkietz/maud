@@ -1,11 +1,5 @@
 ---
-# Maud: {
-#   "version": 18,
-#   "patterns": [
-#     "\\.[ch]xx$",
-#     "!rapidyaml\\.hxx"
-#   ]
-# }
+# Versions: 18
 BasedOnStyle: Google
 ColumnLimit: 90
 AlignArrayOfStructures: Left

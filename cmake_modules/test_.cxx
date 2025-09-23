@@ -524,6 +524,8 @@ struct DefaultDescription {
   }
 };
 
+///.. cpp:struct:: Matcher
+///
 /// Helper for constructing matchers from lambdas.
 ///
 /// Matchers can be used with :c:macro:`EXPECT_` using ``operator>>=``.

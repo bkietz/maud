@@ -436,24 +436,23 @@ endfunction()
 
 function(_maud_setup_clang_format)
   set(config "")
-  # FIXME support clang-format files anywhere
   if(EXISTS "${CMAKE_SOURCE_DIR}/.clang-format")
     file(READ "${CMAKE_SOURCE_DIR}/.clang-format" config)
-    list(APPEND CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/.clang-format")
-    set(CMAKE_CONFIGURE_DEPENDS "${CMAKE_CONFIGURE_DEPENDS}" PARENT_SCOPE)
   endif()
 
-  if(config MATCHES "# Maud: ([{]([^\n]|\n *#)+[}])")
-    string(REGEX REPLACE " *\n *# *" " " json "${CMAKE_MATCH_1}")
-    string(JSON version GET "${json}" version)
-    json_list(patterns "${json}" patterns)
+  set_property(
+    DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS 
+    "${CMAKE_SOURCE_DIR}/.clang-format"
+  )
+
+  if(config MATCHES "# Version: ([0-9]+)")
+    string(version "${CMAKE_MATCH_1}")
   else()
     message(
       VERBOSE
       "Couldn't read required clang-format version"
       "\n--   add a comment to ${CMAKE_SOURCE_DIR}/.clang-format"
-      "\n--   like "
-      [[# Maud: {"version": 18, "patterns": ["[.][ch]xx$", "!thirdparty/"]}]]
+      "\n--   like # Version: 18"
     )
     return()
   endif()
@@ -474,8 +473,13 @@ function(_maud_setup_clang_format)
     VALIDATOR _maud_clang_format_validator
   )
   if(CLANG_FORMAT_COMMAND)
-    glob(formatted_files CONFIGURE_DEPENDS EXCLUDE_RENDERED ${patterns})
-    list(JOIN formatted_files "\n" formatted_files)
+    glob(
+      MAUD_CXX_FORMATTED_SOURCES
+      EXCLUDE_RENDERED
+      CONFIGURE_DEPENDS
+      "[.]([ch]xxm?|[ch]ppm?|ccm?|hh|[ch][+][+]m?|ixx|mxx|h)$"
+    )
+    list(JOIN MAUD_CXX_FORMATTED_SOURCES "\n" formatted_files)
     file(WRITE "${MAUD_DIR}/formatted_files.list" "${formatted_files}\n")
     add_test(
       NAME check.clang-formatted
@@ -1387,6 +1391,7 @@ function(_maud_setup_doc)
 
   set(adapter "${MAUD_DIR}/sphinx_adapter/maud")
 
+  # TODO just make this a pymodule we install like trike
   file(WRITE "${adapter}/__init__.py")
   file(
     WRITE "${adapter}/../pyproject.toml"

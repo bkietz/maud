@@ -24,7 +24,7 @@ DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 
-The header rapidyaml.hxx has the following license (MIT)
+The header .rapidyaml.hxx has the following license (MIT)
 
 Copyright (c) 2018, Joao Paulo Magalhaes <dev@jpmag.me>
 

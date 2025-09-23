@@ -78,7 +78,7 @@ For example, given the following C++ and rst sources in your project:
 
 .. code-block:: c++
 
-  /// Frobnicates the :cpp:var:`whatsit` register.
+  /// Frobnicates the :var:`whatsit` register.
   void frobnicate();
 
 .. code-block:: rst

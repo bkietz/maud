@@ -29,6 +29,8 @@ For example, given the following C++ and rst sources in your project:
 
       .. trike-function:: bool frobnicate()
 
+      .. cpp:var:: volatile int whatsit
+
 The ``trike-function`` directive above will render equivalently to
 a `cpp:function <https://www.sphinx-doc.org/en/master/usage/domains/cpp.html#directive-cpp-function>`_
 directive with content drawn from the ``///``.
@@ -39,10 +41,12 @@ directive with content drawn from the ``///``.
 
   :return: false if no frobnication was necessary
 
+.. cpp:var:: volatile int whatsit
+
 The content of ``///`` is interpreted as reStructuredText, so
 they can be as expressive as the rest of your documentation. Of particular
 note for those who have used other apidoc systems: cross references from
-``///`` comments to labels defined in `*.rst` (or other ``///``) will just work.
+``///`` comments to labels defined in ``*.rst`` (or other ``///``) will just work.
 
 Usage
 -----
@@ -217,3 +221,4 @@ instead of a single list:
 
 .. I remember seeing a project that had the same basic idea using
    tree-sitter to parse c++ but I can't find it now
+

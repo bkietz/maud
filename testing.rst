@@ -27,7 +27,7 @@ and in a test case assertions are made with :c:macro:`EXPECT_`.
 GTest is added to the include path, so explicit
 ``#include <gtest/gtest.h>`` is always available if necessary.
 
-.. code-block:: c++
+.. code-block::
 
   import test_;
 
@@ -70,26 +70,24 @@ Unit test API
 
 .. trike-macro:: EXPECT_(condition...)
 
-.. cpp:module:: test_
+.. module:: test_
 
-.. trike-class:: template <typename Match, \
-                           typename Description = DefaultDescription<Match>> \
-                 Matcher
+.. trike-struct:: Matcher
 
 .. trike-var:: template <typename T> std::string const type_name
 
-.. TODO document Main or whatever helper, setting up state in main()
-
-Custom ``main()``
-=================
+Overriding ``main()``
+=====================
 
 Each suite is linked to ``gtest_main``. Since that defines ``main``
 as a weak symbol, a custom main function can be written in a
 test suite and it will override ``gtest_main``'s default.
 
-To write a custom main function for all test executables,
+To write a custom main function for *all* test executables,
 write an interface unit with ``export module test_:main;`` and
 that will be linked to each test executable instead of ``gtest_main``.
+All namespace scope declarations in that interface unit will be usable
+from any translation unit which imports ``test_``.
 
 Overriding ``test_``
 ====================
@@ -146,7 +144,7 @@ Then inject this into unit tests by defining ``maud_add_test``:
 Then this could be used in a unit test:
 
 ``math.test.cxx``
-    .. code-block:: c++
+    .. code-block::
 
       import test_;
       int main() {
@@ -160,7 +158,9 @@ Formatting test
 
 By default, if `clang-format <https://clang.llvm.org/docs/ClangFormat.html>`_ is
 detected then a test will be added which asserts that files are formatted
-consistently::
+consistently:
+
+.. code-block:: shell-session
 
   $ ctest --build-config Debug --tests-regex formatted --output-on-failure
   Test project ~/maud/.build
@@ -171,7 +171,9 @@ consistently::
   export void compile_in2(std::istream &is,   std::ostream &os);
                                            ^
 
-A ``fix`` target will also be added which formats files in place::
+A ``fix`` target will also be added which formats files in place:
+
+.. code-block:: shell-session
 
   $ ninja fix.clang-format
 
@@ -181,10 +183,11 @@ identical to the set which should be compiled, the separate
 configures which files ``clang-format`` will be applied to. Since different
 major versions of ``clang-format`` will frequently have different and
 backwards-incompatible behavior and parameter spaces, the target version must
-be specified in a ``.clang-format`` file::
+be specified in a ``.clang-format`` file:
 
-  # Versions: 18
+.. code-block:: yaml
+
+  # Version: 18
   BasedOnStyle: Google
   ColumnLimit: 90
 
-.. TODO later

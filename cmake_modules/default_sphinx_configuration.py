@@ -16,7 +16,10 @@ _logger = getLogger(__name__)
 project = maud.cache.PROJECT_NAME
 html_title = maud.cache.PROJECT_NAME
 
+nitpicky = True
+
 primary_domain = "cpp"
+highlight_language = "cpp"
 extensions = []
 exclude_patterns = ["Thumbs.db", ".*", "**/[A-Z_][A-Z_][A-Z_][A-Z_]*"]
 source_suffix = {
@@ -34,10 +37,8 @@ def _trunk(remote: Remote) -> str:
     return ""
 
 
-def _forge(origin_url: str) -> Tuple[str, str, str]:
-    if match := re.match(
-        r"(git@|https://)(github|github)\.com[:/](.+)\.git", origin_url
-    ):
+def _forge(origin: str) -> Tuple[str, str, str]:
+    if match := re.match(r"(git@|https://)(github|github)\.com[:/](.+)\.git", origin):
         _, name, repo = match.groups()
         url = f"https://{name}.com/{repo}"
         icon = f"https://icons.getbootstrap.com/assets/icons/{name}.svg"
@@ -90,8 +91,9 @@ try:
 
     def first_commit_to(path: Path) -> Commit | None:
         assert repo is not None
-        path = path.relative_to(working_tree_dir)
-        if commits := [*Commit.iter_items(repo, trunk, path)]:
+        if commits := [
+            *Commit.iter_items(repo, trunk, path.relative_to(working_tree_dir))
+        ]:
             return commits.pop()
 
     def set_from_git(app: Sphinx, config: Config):
@@ -122,6 +124,8 @@ extensions += ["sphinx.ext.autosectionlabel"]
 autosectionlabel_maxdepth = 2
 autosectionlabel_prefix_document = True
 
+extensions += ["sphinx.ext.ifconfig"]
+
 extensions += ["sphinx.ext.duration"]
 extensions += ["sphinx_inline_tabs"]
 
@@ -140,22 +144,33 @@ extlinks = {
 }
 
 extensions += ["trike"]
+
+_trike_file = re.compile(".*[.]([ch]xxm?|[ch]ppm?|ccm?|hh|[ch][+][+]m?|ixx|mxx|h)")
 trike_files = [
-    *maud.cache.CMAKE_SOURCE_DIR.glob("*.cxx"),
-    *maud.cache.CMAKE_SOURCE_DIR.glob("cmake_modules/*.cxx"),
-    *maud.cache.CMAKE_SOURCE_DIR.glob("cmake_modules/*.hxx"),
+    maud.cache.CMAKE_SOURCE_DIR / file
+    for file in maud.cache._MAUD_ALL.split(";")
+    if _trike_file.match(file)
 ]
 # FIXME with c++20 libclang parses exported decls to UNEXPOSED_DECL
 trike_clang_args = ["-std=gnu++20", "-Dexport="]
 
+if repo is not None:
 
-def trike_get_uri(file, line):
-    # FIXME what if file was generated?
-    relative = file.relative_to(maud.cache.CMAKE_SOURCE_DIR)
-    return f"https://github.com/bkietz/maud/blob/trunk/{relative}#L{line}"
+    def trike_get_uri(file, line):
+        # FIXME what if file was generated?
+        relative = file.relative_to(working_tree_dir)
+        # FIXME this won't work for all forges
+        return f"{forge_url}/blob/{trunk}/{relative}#L{line}"
 
 
 def setup(app: Sphinx) -> ExtensionMetadata:
+    app.add_config_value(
+        name="maud",
+        description="maud.cache provides access to the cmake CACHE",
+        default=__import__("maud"),
+        rebuild="",
+    )
+
     if repo is not None:
         app.connect(
             "config-inited",

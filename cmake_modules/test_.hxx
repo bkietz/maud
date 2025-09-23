@@ -18,7 +18,7 @@
 /// distinct test case using the same test body. In the scope of
 /// the test body, the parameter is declared as
 ///
-/// .. var:: Parameter const &parameter
+/// .. var:: auto const &parameter
 ///
 /// If parameters are read from an initializer list or other
 /// range then this is analogous to a
@@ -74,7 +74,7 @@
 ///   // Expected: three == five
 ///   //   Actual:     3 vs 5
 ///
-/// :expr:`EXPECT_(...)` produces an expression rather than a statement.
+/// :c:expr:`EXPECT_(...)` produces an expression rather than a statement.
 /// It is contextually convertible to ``bool``, truthy iff the condition
 /// was truthy. If additional context needs to be added to a failed
 /// expectation, a lambda can be provided which will only be called

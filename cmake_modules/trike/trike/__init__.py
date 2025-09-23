@@ -17,6 +17,7 @@ from clang.cindex import (
     Token,
     TokenKind,
     TranslationUnit,
+    TranslationUnitLoadError,
 )
 from sphinx.application import Sphinx
 from sphinx.util.typing import ExtensionMetadata
@@ -321,7 +322,18 @@ def get_documentable_declaration(
 
 def comment_scan(path: Path, clang_args: list[str]) -> FileContent:
     """Scan the C++ source at ``path`` for ///s"""
-    tu = Index.create().parse(str(path), args=clang_args, options=PARSE_FLAGS)
+    logger.info(f"Scanning C++ source at `{path}` for ///s")
+    try:
+        tu = Index.create().parse(str(path), args=clang_args, options=PARSE_FLAGS)
+    except TranslationUnitLoadError as e:
+        logger.error(f"TranslationUnitLoadError while parsing `{path}`: {e}")
+        return FileContent(
+            module="",
+            floating_comments=[],
+            directive_comments=[],
+            clang_diagnostics=[],
+            mtime_when_parsed=path.stat().st_mtime,
+        )
     module = get_module(tu)
 
     tokens = Tokens(tu)
@@ -498,6 +510,7 @@ def _builder_inited(app: Sphinx) -> None:
 
 class CppModuleDirective(SphinxDirective):
     "Set (or unset) the current C++ module, similar to .. cpp:namespace::"
+
     has_content = False
     required_arguments = 0
     optional_arguments = 1
@@ -523,17 +536,20 @@ def _extend_with_formatted_path(cls):
                 self.arguments[0] = str(path)
             except Exception as err:
                 from traceback import format_exception_only
+
                 msg = "".join(format_exception_only(err.__class__, err))
                 msg = "Exception occurred in include path expression:\n{msg}"
                 return [self.state.document.reporter.error(msg)]
             else:
                 return super().run()
+
     return FormattedPathInclude
 
 
 @_extend_with_formatted_path
 class LiterateIncludeDirective(SphinxDirective):
     "Include source files, interpreting floating /// as prose between code blocks"
+
     has_content = False
     required_arguments = 1
 

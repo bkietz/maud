@@ -3,7 +3,7 @@ module;
 #include <ostream>
 #include <vector>
 #define RYML_SINGLE_HDR_DEFINE_NOW
-#include "rapidyaml.hxx"
+#include ".rapidyaml.hxx"
 export module maud_:yaml;
 import :filesystem;
 
