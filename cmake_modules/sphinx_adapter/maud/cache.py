@@ -4,11 +4,9 @@ def _read():
     import sys
 
     ENTRY = re.compile("([^#/].*):(.+)=(.*)")
-    FALSE_STRINGS = {*"0 FALSE OFF N NO IGNORE NOTFOUND".split()}
-    INTERNAL_PATHS = {*"CMAKE_SOURCE_DIR CMAKE_BINARY_DIR MAUD_DIR".split()}
+    FALSE_STRINGS = "0 FALSE OFF N NO IGNORE NOTFOUND".split()
 
-    cache_txt = Path(sys.prefix) / "../../CMakeCache.txt"
-    for line in cache_txt.resolve().open():
+    for line in Path(sys.prefix, "../../CMakeCache.txt").resolve().open():
         if match := ENTRY.match(line):
             name, typename, value = match.groups()
 
@@ -18,8 +16,6 @@ def _read():
                     or value == ""
                     or value.endswith("-NOTFOUND")
                 )
-            elif "PATH" in typename or name in INTERNAL_PATHS:
-                value = Path(value)
 
             globals()[name] = value
 

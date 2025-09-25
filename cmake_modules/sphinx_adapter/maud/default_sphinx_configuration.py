@@ -145,9 +145,9 @@ extlinks = {
 
 extensions += ["trike"]
 
-_trike_file = re.compile(".*[.]([ch]xxm?|[ch]ppm?|ccm?|hh|[ch][+][+]m?|ixx|mxx|h)")
+_trike_file = re.compile(".*[.]([ch]xxm?|[ch]ppm?|ccm?|hh|[ch][+][+]m?|ixx|mxx|h)$")
 trike_files = [
-    maud.cache.CMAKE_SOURCE_DIR / file
+    Path(maud.cache.CMAKE_SOURCE_DIR, file)
     for file in maud.cache._MAUD_ALL.split(";")
     if _trike_file.match(file)
 ]

@@ -13,18 +13,22 @@ install(
   "${dir}/cmake_modules/test_.cxx"
   "${dir}/cmake_modules/test_.hxx"
   "${dir}/cmake_modules/test_main_.cxx"
-  "${dir}/cmake_modules/cache.py"
-  "${dir}/cmake_modules/default_sphinx_configuration.py"
   "${dir}/cmake_modules/default_sphinx_requirements.txt"
+
   DESTINATION
   "${CMAKE_INSTALL_LIBDIR}/cmake/Maud"
 )
 install(
-  DIRECTORY
-  "${dir}/cmake_modules/trike"
-  # FIXME don't install __pycache__
-  DESTINATION
-  "${CMAKE_INSTALL_LIBDIR}/cmake/Maud"
+  DIRECTORY "${dir}/cmake_modules/trike"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/Maud"
+  PATTERN __pycache__ EXCLUDE
+  PATTERN *.egg-info EXCLUDE
+)
+install(
+  DIRECTORY "${dir}/cmake_modules/sphinx_adapter"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/Maud"
+  PATTERN __pycache__ EXCLUDE
+  PATTERN *.egg-info EXCLUDE
 )
 
 # Shim and install the Maud CLI

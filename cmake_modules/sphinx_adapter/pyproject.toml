@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "maud"
+version = "0.0.1"
+dependencies = [
+  "sphinx == 8.*",
+  "furo == 2025.07.19",
+  "sphinx_inline_tabs",
+  "GitPython == 3.*",
+]
+

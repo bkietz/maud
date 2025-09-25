@@ -1,12 +1,19 @@
 add_compile_definitions("BUILD_DIR=\"${CMAKE_BINARY_DIR}\"")
 
-if(NOT EXISTS "${CMAKE_BINARY_DIR}/documentation/venv/bin/pytest")
+maud_venv("${CMAKE_BINARY_DIR}/pytest_venv" venv-)
+if(NOT venv-python)
   return()
 endif()
 
+add_custom_target(
+  pytest ALL
+  COMMENT "Installing pytest to test trike"
+  COMMAND
+    "${venv-pip_install}"
+    --editable "${dir}/cmake_modules/trike[test]"
+  COMMAND_EXPAND_LISTS
+)
 add_test(
   NAME pytest.trike
-  COMMAND
-    "${CMAKE_BINARY_DIR}/documentation/venv/bin/pytest" -vv
-    "${CMAKE_SOURCE_DIR}/cmake_modules/trike"
+  COMMAND "${venv-python}" -m pytest -vv "${dir}/cmake_modules/trike"
 )

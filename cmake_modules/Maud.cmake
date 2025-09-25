@@ -1233,17 +1233,16 @@ function(_maud_setup)
     MARK_AS_ADVANCED
   )
 
-  _maud_set(
-    _MAUD_VALID_SPHINX_BUILDERS
-    html dirhtml singlehtml htmlhelp qthelp devhelp applehelp epub
-    latex texinfo man text gettext doctest xml pseudoxml linkcheck
-  )
+  set(valid0 html dirhtml singlehtml htmlhelp qthelp devhelp applehelp epub)
+  set(valid1 latex texinfo man text gettext doctest xml pseudoxml linkcheck)
+  _maud_set(_MAUD_VALID_SPHINX_BUILDERS ${valid0} ${valid1})
   option(
-    # Should this be multiple boolean options like SPHINX_BUILD_DIRHTML?
     SPHINX_BUILDERS
     STRING "
-    A ;-list of builders which will be used with Sphinx. Valid builders are:
-    ${_MAUD_VALID_SPHINX_BUILDERS}
+    A ;-list of builders which will be used with Sphinx.
+    Valid builders are:
+    ${valid0};
+    ${valid1}
     "
     DEFAULT "dirhtml"
     VALIDATE CODE "
@@ -1348,20 +1347,55 @@ function(_maud_render_in2)
 endfunction()
 
 
+function(maud_venv dir out_name_prefix)
+  set(${out_name_prefix}python "" PARENT_SCOPE)
+  set(${out_name_prefix}pip_install "" PARENT_SCOPE)
+
+  find_package(Python3)
+  if(NOT TARGET Python3::Interpreter)
+    message(VERBOSE "Could not find Python3, can't create venv ${dir}")
+    return()
+  endif()
+
+  execute_process(COMMAND "${Python3_EXECUTABLE}" -m venv "${dir}")
+
+  find_program(
+    python python REQUIRED NO_CACHE
+    NO_DEFAULT_PATH PATHS "${dir}/bin" "${dir}/Scripts"
+  )
+  set(${out_name_prefix}python "${python}" PARENT_SCOPE)
+  set(
+    ${out_name_prefix}pip_install
+
+    "${python}" -m
+    pip install
+    --isolated
+    --require-virtualenv
+    --ignore-installed
+    --disable-pip-version-check
+    --no-input
+    --quiet
+    --log "${dir}/pip.log"
+    --report "${dir}/pip.report.json"
+
+    PARENT_SCOPE
+  )
+endfunction()
+
+
 function(_maud_setup_doc)
   if(NOT SPHINX_BUILDERS)
     message(VERBOSE "No Sphinx builders enabled, abandoning doc")
     return()
   endif()
 
-  find_package(Python3)
-  if(NOT TARGET Python3::Interpreter)
-    # TODO instead, error here (but include instructions to disable doc)
-    message(VERBOSE "Could not find Python3, abandoning doc")
+  set(doc "${CMAKE_BINARY_DIR}/documentation")
+
+  maud_venv("${doc}/venv" venv-)
+  if(NOT venv-python)
+    message(WARNING "Could not set up Python3 venv for documentation build.")
     return()
   endif()
-
-  set(doc "${CMAKE_BINARY_DIR}/documentation")
 
   if(DEFINED MAUD_DOCUMENTATION_DIR)
     set(src "${MAUD_DOCUMENTATION_DIR}")
@@ -1389,53 +1423,16 @@ function(_maud_setup_doc)
     set(requirements "${_MAUD_SELF_DIR}/default_sphinx_requirements.txt")
   endif()
 
-  set(adapter "${MAUD_DIR}/sphinx_adapter/maud")
-
-  # TODO just make this a pymodule we install like trike
-  file(WRITE "${adapter}/__init__.py")
-  file(
-    WRITE "${adapter}/../pyproject.toml"
-    [[
-      [build-system]
-      requires = ["setuptools"]
-      build-backend = "setuptools.build_meta"
-      [project]
-      name = "maud"
-      version = "0.0.1"
-      dependencies = []
-    ]]
-  )
-  file(
-    COPY
-      "${_MAUD_SELF_DIR}/cache.py"
-      "${_MAUD_SELF_DIR}/default_sphinx_configuration.py"
-    DESTINATION "${adapter}"
-  )
-
-  execute_process(COMMAND "${Python3_EXECUTABLE}" -m venv "${doc}/venv")
-  find_program(
-    pip pip NO_CACHE REQUIRED
-    NO_DEFAULT_PATH PATHS "${doc}/venv/bin" "${doc}/venv/Scripts"
-  )
-  string(REPLACE pip sphinx-build sphinx "${pip}")
-
   add_custom_command(
     COMMENT "Building virtual env ${doc}/venv for Sphinx"
-    OUTPUT "${sphinx}"
     DEPENDS "${requirements}"
+    OUTPUT "${doc}/venv/pip.log"
     COMMAND
-      "${pip}" install
-      --editable "${adapter}/.."
-      --editable "${_MAUD_SELF_DIR}/trike"
+      "${venv-pip_install}"
       --requirement "${requirements}"
-      --isolated
-      --require-virtualenv
-      --ignore-installed
-      --disable-pip-version-check
-      --no-input
-      --quiet
-      --log "${doc}/venv/pip.log"
-      --report "${doc}/venv/pip.report.json"
+      --editable "${_MAUD_SELF_DIR}/trike"
+      --editable "${_MAUD_SELF_DIR}/sphinx_adapter"
+    COMMAND_EXPAND_LISTS
   )
 
   # We run sphinx multithreaded. This can pessimize throughput since ninja
@@ -1451,10 +1448,11 @@ function(_maud_setup_doc)
       documentation.${builder}
       COMMENT "Building ${builder} with sphinx"
       DEPENDS
-        "${sphinx}"
+        "${doc}/venv/pip.log"
         "${conf}/conf.py"
       COMMAND
-        "${sphinx}"
+        "${venv-python}" -m
+        sphinx
         --builder ${builder}
         --conf-dir "${conf}"
         --doctree-dir doctrees

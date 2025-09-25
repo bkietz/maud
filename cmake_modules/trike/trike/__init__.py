@@ -659,7 +659,7 @@ class PutDirective(SphinxDirective):
     def run(self) -> list[Node]:
         directive, argument = self.get_directive()
 
-        namespace = self.env.temp_data.get("cpp:namespace_stack", [""])[-1]
+        *_, namespace = self.env.temp_data.get("cpp:namespace_stack") or [""]
         module = self.env.temp_data.get("cpp:module", "")
 
         comment, close_matches = self.env.trike_state.get_directive_comment(
