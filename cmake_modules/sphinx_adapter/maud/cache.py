@@ -1,12 +1,17 @@
-def _read():
-    from pathlib import Path
-    import re
-    import sys
+from pathlib import Path
+import re
+import sys
+
+
+def read(cache_txt: Path | None = None) -> dict[str, str | bool]:
+    if cache_txt is None:
+        cache_txt = Path(sys.prefix, "../../CMakeCache.txt").resolve()
 
     ENTRY = re.compile("([^#/].*):(.+)=(.*)")
     FALSE_STRINGS = "0 FALSE OFF N NO IGNORE NOTFOUND".split()
 
-    for line in Path(sys.prefix, "../../CMakeCache.txt").resolve().open():
+    out = {}
+    for line in cache_txt.open():
         if match := ENTRY.match(line):
             name, typename, value = match.groups()
 
@@ -17,7 +22,6 @@ def _read():
                     or value.endswith("-NOTFOUND")
                 )
 
-            globals()[name] = value
+            out[name] = value
 
-
-_read()
+    return out

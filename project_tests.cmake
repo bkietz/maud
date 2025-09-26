@@ -1135,11 +1135,11 @@ Weeeeee
 
 .. trike-struct:: Foo
 
-.. ifconfig:: maud.cache.DOCUMENT_EXPERIMENTAL
+.. ifconfig:: CACHE["DOCUMENT_EXPERIMENTAL"]
 
   Sometimes there are experiments
 
-.. ifconfig:: not maud.cache.DOCUMENT_EXPERIMENTAL
+.. ifconfig:: not CACHE["DOCUMENT_EXPERIMENTAL"]
 
   Mostly things are stable
 ]]

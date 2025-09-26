@@ -31,8 +31,8 @@ named ``sphinx_configuration/`` anywhere in your project. In a Maud project
 
 .. code-block:: python
 
-   import maud
-   if maud.cache.ENABLE_DIAGRAMS:
+   from maud import CACHE
+   if CACHE["ENABLE_DIAGRAMS"]:
        extensions += ['awesome-diagrams-ext']
 
 ... or ``option(DOCUMENT_EXPERIMENTAL)`` might be used with
@@ -40,7 +40,7 @@ named ``sphinx_configuration/`` anywhere in your project. In a Maud project
 
 .. code-block:: rst
 
-  .. ifconfig:: maud.cache.DOCUMENT_EXPERIMENTAL
+  .. ifconfig:: CACHE["DOCUMENT_EXPERIMENTAL"]
 
     .. experimental features doc
 

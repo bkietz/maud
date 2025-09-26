@@ -7,8 +7,10 @@ import sphinx.highlighting
 from sphinx.application import Sphinx
 from sphinx.util.typing import ExtensionMetadata
 
-project = maud.cache.PROJECT_NAME
-html_title = maud.cache.PROJECT_NAME
+CACHE = maud.cache.read()
+
+project = str(CACHE["PROJECT_NAME"])
+html_title = str(CACHE["PROJECT_NAME"])
 
 nitpicky = True
 
@@ -58,8 +60,8 @@ extensions += ["trike"]
 
 _trike_file = re.compile(".*[.]([ch]xxm?|[ch]ppm?|ccm?|hh|[ch][+][+]m?|ixx|mxx|h)$")
 trike_files = [
-    Path(maud.cache.CMAKE_SOURCE_DIR, file)
-    for file in maud.cache._MAUD_ALL.split(";")
+    Path(str(CACHE["CMAKE_SOURCE_DIR"]), file)
+    for file in str(CACHE["_MAUD_ALL"]).split(";")
     if _trike_file.match(file)
 ]
 # FIXME with c++20 libclang parses exported decls to UNEXPOSED_DECL
@@ -69,9 +71,9 @@ trike_clang_args = ["-std=gnu++20", "-Dexport="]
 
 def setup(app: Sphinx) -> ExtensionMetadata:
     app.add_config_value(
-        name="maud",
-        description="maud.cache provides access to the cmake CACHE",
-        default=__import__("maud"),
+        name="CACHE",
+        description="dict accessor to the CMake CACHE",
+        default=CACHE,
         rebuild="",
     )
 
