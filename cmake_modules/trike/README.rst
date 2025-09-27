@@ -4,6 +4,8 @@
 .. image:: /cmake_modules/trike/trike-dark.png
   :class: only-dark
 
+.. _trike:
+
 Trike
 =====
 

@@ -1404,10 +1404,8 @@ function(_maud_setup_doc)
   endif()
   _maud_set(MAUD_DOCUMENTATION_DIR "${src}")
 
-  if(EXISTS "${src}/sphinx_configuration/conf.py")
+  if(IS_DIRECTORY "${src}/sphinx_configuration")
     set(conf "${src}/sphinx_configuration")
-  elseif(EXISTS "${src}/conf.py")
-    set(conf "${src}")
   else()
     set(conf "${doc}/default_sphinx_configuration")
     file(

@@ -10,7 +10,6 @@ from sphinx.util.typing import ExtensionMetadata
 CACHE = maud.cache.read()
 
 project = str(CACHE["PROJECT_NAME"])
-html_title = str(CACHE["PROJECT_NAME"])
 
 nitpicky = True
 
@@ -23,6 +22,7 @@ source_suffix = {
 }
 
 
+html_title = str(CACHE["PROJECT_NAME"])
 html_theme = "furo"
 html_theme_options = {
     "footer_icons": [],
@@ -41,6 +41,7 @@ extensions += ["sphinx.ext.ifconfig"]
 
 extensions += ["sphinx.ext.duration"]
 extensions += ["sphinx_inline_tabs"]
+extensions += ["sphinx_copybutton"]
 
 extensions += ["sphinx.ext.extlinks"]
 extlinks_detect_hardcoded_links = True
