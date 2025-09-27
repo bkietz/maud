@@ -574,18 +574,17 @@ class PutDirective(SphinxDirective):
     def cpp(self):
         "Temporarily set the default domain/language to C++"
         stashed = {
-            key: val
-            for key, val in self.env.temp_data.items()
-            if key in {"default_domain", "highlight_language"}
+            key: self.env.temp_data[key]
+            for key in ("default_domain", "highlight_language")
+            if key in self.env.temp_data
         }
         self.env.temp_data["default_domain"] = self.env.domains["cpp"]
         self.env.temp_data["highlight_language"] = "cpp"
         try:
             yield
         finally:
-            for key in stashed.keys():
-                del self.env.temp_data[key]
-            self.env.temp_data.update(stashed)
+            for key, stashed_val in stashed.items():
+                self.env.temp_data[key] = stashed_val
 
     def get_directive(self) -> tuple[str, str]:
         """
