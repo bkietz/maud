@@ -48,7 +48,7 @@ If you need docs in their own dir or you need generated docs,
     break my habit of writing Miscellaneous Doc in irredeemable places.
 
 Configuration
--------------
+=============
 
 If explicit configuration becomes necessary for your project, create a directory
 named ``sphinx_configuration/`` at the root of your documentation sources.
