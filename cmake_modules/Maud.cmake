@@ -718,6 +718,7 @@ endfunction()
 
 
 function(_maud_finalize_import target access import)
+  message(VERBOSE "  IMPORT: ${access} ${import}")
   if(TARGET ${import})
     target_link_libraries(${target} ${access} ${import})
     return()
@@ -740,6 +741,7 @@ function(_maud_finalize_import target access import)
 
   get_target_property(transitive_imports ${import} INTERFACE_LINK_LIBRARIES)
   if(transitive_imports)
+    message(VERBOSE "  TRANSITIVE: ${import} -> ${transitive_imports}")
     foreach(import ${transitive_imports})
       _maud_finalize_import(${target} ${access} ${import})
     endforeach()
@@ -781,7 +783,6 @@ function(_maud_finalize_targets)
     if(module AND target_type STREQUAL "EXECUTABLE")
       list(APPEND imports "${module}")
     endif()
-    message(VERBOSE "  IMPORTS: ${imports}")
 
     # Link targets to imported modules
     list(FILTER imports EXCLUDE REGEX ":")
@@ -807,6 +808,9 @@ function(_maud_finalize_targets)
         message(VERBOSE "  No primary interface supplied, injecting ${interface}")
 
         get_target_property(src ${target} MAUD_INTERFACE_PARTITIONS)
+        if(NOT src)
+          set(src)
+        endif()
         list(TRANSFORM src PREPEND "\nexport import :")
         list(PREPEND src "export module ${target}")
         file(WRITE "${interface}" "${src};\n")

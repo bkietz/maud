@@ -117,4 +117,4 @@ to conditionally enable an extension:
 
     .. experimental features doc
 
- .. note:: This last example does not require explicit ``conf.py``
+.. note:: This last example does not require explicit ``conf.py``

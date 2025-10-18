@@ -567,6 +567,7 @@ macro("project test: import installed")
   )
   run(
     COMMAND maud --log-level=VERBOSE
+                 -DCMAKE_VERBOSE_MAKEFILE=ON
     WORKING_DIRECTORY foo
   )
   run(COMMAND cmake --install foo/.build --config Debug --prefix .usr)
@@ -587,6 +588,7 @@ macro("project test: import installed")
   )
   run(
     COMMAND maud --log-level=VERBOSE
+                 -DCMAKE_VERBOSE_MAKEFILE=ON
     WORKING_DIRECTORY bar
   )
   run(COMMAND cmake --install bar/.build --config Debug --prefix .usr)
@@ -602,11 +604,135 @@ macro("project test: import installed")
       int main() { return bar(); }
     ]]
   )
-  run(COMMAND maud --log-level=VERBOSE WORKING_DIRECTORY baz)
+  run(
+    COMMAND maud --log-level=VERBOSE 
+                 -DCMAKE_VERBOSE_MAKEFILE=ON
+    WORKING_DIRECTORY baz
+  )
   run(COMMAND cmake --install baz/.build --config Debug --prefix .usr)
 
   # delete baz's directory to assert we don't depend on it
   run(COMMAND cmake -E rm -R baz)
+
+  run(COMMAND baz)
+endmacro()
+
+
+macro("project test: local shared_library")
+  set(config Release)
+  write(
+    foo/foo.cxx
+    [[
+      export module foo;
+      export int foo();
+    ]]
+  )
+  write(
+    foo/foo_impl.cxx
+    [[
+      module foo:impl;
+      namespace { int foo_impl() { return 0; } }
+      static int foo_impl_s() { return 0; }
+      int foo() { return foo_impl() + foo_impl_s(); }
+    ]]
+  )
+  write(
+    bar/bar.cxx
+    [[
+      export module bar;
+      import foo;
+      export int bar() { return foo(); }
+    ]]
+  )
+  write(
+    baz/baz.cxx
+    [[
+      import executable;
+      import bar;
+      int main() { return bar(); }
+    ]]
+  )
+  run(
+    COMMAND maud --log-level=VERBOSE
+                 --generate-only
+                 -DBUILD_SHARED_LIBS=ON
+                 -DCMAKE_VERBOSE_MAKEFILE=ON
+  )
+  run(COMMAND cmake --build .build --config ${config})
+  run(COMMAND cmake --install .build --config ${config} --prefix .usr --strip)
+
+  run(COMMAND baz)
+endmacro()
+
+
+macro("project test: import installed shared_library")
+  # FIXME
+  # Release build fails to build a BMI from foo.cxx
+  # before it is required by bar.cxx when *its* BMI
+  # is built for baz
+  set(config Debug)
+  write(
+    foo/foo.cxx
+    [[
+      export module foo;
+      export int foo();
+    ]]
+  )
+  write(
+    foo/foo_impl.cxx
+    [[
+      module foo:impl;
+      namespace { int foo_impl() { return 0; } }
+      static int foo_impl_s() { return 0; }
+      int foo() { return foo_impl() + foo_impl_s(); }
+    ]]
+  )
+  run(
+    COMMAND maud --log-level=VERBOSE
+                 -DBUILD_SHARED_LIBS=ON
+                 -DCMAKE_VERBOSE_MAKEFILE=ON
+                 --generate-only
+#                 -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON
+    WORKING_DIRECTORY foo
+  )
+  run(COMMAND cmake --build foo/.build --config ${config})
+  run(COMMAND cmake --install foo/.build --config ${config} --prefix .usr --strip)
+
+  write(
+    bar/bar.cxx
+    [[
+      export module bar;
+      import foo;
+      export int bar() { return foo(); }
+    ]]
+  )
+  run(
+    COMMAND maud --log-level=VERBOSE
+                 -DBUILD_SHARED_LIBS=ON
+                 -DCMAKE_VERBOSE_MAKEFILE=ON
+                 --generate-only
+#                 -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON
+    WORKING_DIRECTORY bar
+  )
+  run(COMMAND cmake --build bar/.build --config ${config})
+  run(COMMAND cmake --install bar/.build --config ${config} --prefix .usr --strip)
+
+  write(
+    baz/baz.cxx
+    [[
+      import executable;
+      import bar;
+      int main() { return bar(); }
+    ]]
+  )
+  run(
+    COMMAND maud --log-level=VERBOSE
+                 -DCMAKE_VERBOSE_MAKEFILE=ON
+                 --generate-only
+    WORKING_DIRECTORY baz
+  )
+  run(COMMAND cmake --build baz/.build --config ${config})
+  run(COMMAND cmake --install baz/.build --config ${config} --prefix .usr --strip)
 
   run(COMMAND baz)
 endmacro()
@@ -1339,6 +1465,8 @@ function(run_test)
   prepend_to_path_list(Path .usr/bin)
   prepend_to_path_list(PATH .usr/bin)
   prepend_to_path_list(CMAKE_PREFIX_PATH .usr/lib/cmake)
+  prepend_to_path_list(Path .usr/lib)
+  prepend_to_path_list(LD_LIBRARY_PATH .usr/lib)
   set(ENV{CXX} "${CMAKE_CXX_COMPILER}")
   # TODO use the same generator
 
